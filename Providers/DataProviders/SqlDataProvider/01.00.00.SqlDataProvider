@@ -1,0 +1,101 @@
+﻿-- Create CoursePlans table
+CREATE TABLE {databaseOwner}[{objectQualifier}CoursePlans]
+(
+    [ID] INT NOT NULL IDENTITY (1, 1)
+    CONSTRAINT [PK_CoursePlans] PRIMARY KEY CLUSTERED,
+    [Name] NVARCHAR(100) NOT NULL,
+    [DurationHours] INT NOT NULL,
+    [Description] NVARCHAR(MAX) NULL,
+    [MaxCapacity] INT NOT NULL,
+    [Price] DECIMAL(10,2) NOT NULL,
+    [IsPublic] BIT NOT NULL DEFAULT 1,
+    [PrerequisiteIds] NVARCHAR(100) NULL,
+    [CourseCategory] NVARCHAR(50) NOT NULL
+) ON [PRIMARY]
+GO
+
+-- Create CourseBookings table
+CREATE TABLE {databaseOwner}[{objectQualifier}CourseBookings]
+(
+    [ID] INT NOT NULL IDENTITY (1, 1)
+    CONSTRAINT [PK_CourseBookings] PRIMARY KEY CLUSTERED,
+    [CreatedByUserID] INT NOT NULL,
+    [CreatedDate] DATETIME NOT NULL DEFAULT GETUTCDATE(),
+    [IsCancelled] BIT NOT NULL DEFAULT 0,
+    [StartTime] DATETIME NOT NULL,
+    [DurationHours] INT NOT NULL,
+    [CoursePlanID] INT NOT NULL
+    CONSTRAINT [FK_CourseBookings_CoursePlans] FOREIGN KEY
+    REFERENCES {databaseOwner}[{objectQualifier}CoursePlans] (ID),
+    [VoucherCode] NVARCHAR(50) NULL,
+    [VoucherSentDate] DATETIME NULL,
+    [PaymentStatus] NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+    [PaymentReference] NVARCHAR(100) NULL
+) ON [PRIMARY]
+GO
+
+CREATE INDEX [IX_CourseBookings_StartTime] ON {databaseOwner}[{objectQualifier}CourseBookings] (StartTime)
+GO
+
+CREATE INDEX [IX_CourseBookings_CreatedByUserID] ON {databaseOwner}[{objectQualifier}CourseBookings] (CreatedByUserID)
+GO
+
+-- Create CourseParticipants table
+CREATE TABLE {databaseOwner}[{objectQualifier}CourseParticipants]
+(
+    [ID] INT NOT NULL IDENTITY (1, 1)
+    CONSTRAINT [PK_CourseParticipants] PRIMARY KEY CLUSTERED,
+    [BookingID] INT NOT NULL
+    CONSTRAINT [FK_CourseParticipants_CourseBookings] FOREIGN KEY
+    REFERENCES {databaseOwner}[{objectQualifier}CourseBookings] (ID),
+    [AddedDate] DATETIME NOT NULL DEFAULT GETUTCDATE(),
+    [AddedByUserID] INT NOT NULL,
+    [ParticipantName] NVARCHAR(100) NOT NULL,
+    [Email] NVARCHAR(100) NOT NULL,
+    [AttendanceStatus] NVARCHAR(50) NOT NULL DEFAULT 'Registered',
+    [Notes] NVARCHAR(500) NULL
+) ON [PRIMARY]
+GO
+
+CREATE INDEX [IX_CourseParticipants_BookingID] ON {databaseOwner}[{objectQualifier}CourseParticipants] (BookingID)
+GO
+
+CREATE INDEX [IX_CourseParticipants_Email] ON {databaseOwner}[{objectQualifier}CourseParticipants] (Email)
+GO
+
+-- Create CourseNotifications table
+CREATE TABLE {databaseOwner}[{objectQualifier}CourseNotifications]
+(
+    [ID] INT NOT NULL IDENTITY (1, 1)
+    CONSTRAINT [PK_CourseNotifications] PRIMARY KEY CLUSTERED,
+    [BookingID] INT NOT NULL
+    CONSTRAINT [FK_CourseNotifications_CourseBookings] FOREIGN KEY
+    REFERENCES {databaseOwner}[{objectQualifier}CourseBookings] (ID),
+    [NotificationType] NVARCHAR(50) NOT NULL,
+    [Recipients] NVARCHAR(MAX) NOT NULL,
+    [SentDate] DATETIME NOT NULL DEFAULT GETUTCDATE(),
+    [TemplateUsed] NVARCHAR(100) NOT NULL,
+    [IsDeliverySuccessful] BIT NOT NULL DEFAULT 0,
+    [ErrorLog] NVARCHAR(500) NULL
+) ON [PRIMARY]
+GO
+
+CREATE INDEX [IX_CourseNotifications_BookingID] ON {databaseOwner}[{objectQualifier}CourseNotifications] (BookingID)
+GO
+
+CREATE INDEX [IX_CourseNotifications_SentDate] ON {databaseOwner}[{objectQualifier}CourseNotifications] (SentDate)
+GO
+
+-- Insert initial course plans
+INSERT INTO {databaseOwner}[{objectQualifier}CoursePlans]
+(Name, DurationHours, Description, MaxCapacity, Price, IsPublic, CourseCategory)
+VALUES
+('Basic Beer Brewing', 2, 'Bevezetés a sörfőzés alapjaiba, eszközök, alapanyagok és alaptechnikák bemutatásával.', 10, 29.99, 1, 'Brewing'),
+('Advanced Brewing Techniques', 3, 'Gyakorlott házi sörfőzőknek szóló képzés, vízkémia és élesztőkezelés mélyebb ismeretével.', 8, 49.99, 1, 'Brewing'),
+('Cocktail Mastery Course', 2, 'Átfogó bevezetés a koktélkészítés művészetébe, klasszikus és modern receptekkel.', 12, 34.99, 1, 'Cocktail'),
+('Gin & Tonic Special', 1, 'Egyedi workshop a tökéletes gin-tonik párosításokról és variációkról.', 15, 19.99, 1, 'Cocktail'),
+('Homemade Liqueur Preparation', 4, 'Részletes útmutató a házi likőrök előállításáról különféle alapanyagokból.', 6, 59.99, 1, 'Liqueur'),
+('Wine Tasting Basics', 2, 'Bevezetés a borkóstolás technikáiba és a különböző borfajták jellemzőibe.', 10, 39.99, 1, 'Wine'),
+('Private Beverage Consultation', 2, 'Személyre szabott konzultáció egyedi szakmai útmutatással.', 1, 99.99, 0, 'Mixed'),
+('Commercial Brewery Fundamentals', 5, 'Átfogó betekintés a kereskedelmi sörfőzés folyamataiba és a méretezési kérdésekbe.', 5, 129.99, 0, 'Brewing')
+GO
