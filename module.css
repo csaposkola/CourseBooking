@@ -1,0 +1,305 @@
+/* CourseBooking Module CSS */
+
+/* Calendar View */
+.csaposkola-course-calendar {
+    margin: 20px 0;
+    font-family: Arial, sans-serif;
+}
+
+.calendar-header {
+    margin-bottom: 20px;
+}
+
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.calendar-month-selector {
+    display: flex;
+    align-items: center;
+}
+
+    .calendar-month-selector button {
+        margin: 0 10px;
+    }
+
+#currentMonthDisplay {
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 150px;
+    text-align: center;
+}
+
+.calendar-jump-to {
+    display: flex;
+}
+
+    .calendar-jump-to select {
+        margin-right: 5px;
+        width: auto;
+    }
+
+.calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+    .calendar-table th {
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+.calendar-day {
+    border: 1px solid #ddd;
+    height: 150px;
+    vertical-align: top;
+    padding: 5px;
+    position: relative;
+}
+
+    .calendar-day.empty {
+        background-color: #f9f9f9;
+    }
+
+    .calendar-day.past-date {
+        background-color: #f9f9f9;
+        color: #999;
+    }
+
+.day-number {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.course-slots {
+    overflow-y: auto;
+    height: 120px;
+}
+
+.time-slot {
+    display: block;
+    padding: 3px 5px;
+    margin-bottom: 3px;
+    border-radius: 3px;
+    color: #333;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+    .time-slot:hover {
+        opacity: 0.9;
+    }
+
+    .time-slot .time {
+        font-weight: bold;
+    }
+
+    .time-slot.available {
+        background-color: #e8f5e9;
+        border: 1px solid #c8e6c9;
+    }
+
+    .time-slot.my-booking {
+        background-color: #e3f2fd;
+        border: 1px solid #bbdefb;
+    }
+
+    .time-slot.booked {
+        background-color: #ffecb3;
+        border: 1px solid #ffe082;
+    }
+
+    .time-slot.past {
+        background-color: #f5f5f5;
+        border: 1px solid #e0e0e0;
+        color: #999;
+        cursor: default;
+    }
+
+.calendar-legend {
+    display: flex;
+    margin-top: 15px;
+    justify-content: center;
+}
+
+.legend-item {
+    margin: 0 10px;
+    display: flex;
+    align-items: center;
+}
+
+.legend-color {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border-radius: 3px;
+}
+
+    .legend-color.available {
+        background-color: #e8f5e9;
+        border: 1px solid #c8e6c9;
+    }
+
+    .legend-color.my-booking {
+        background-color: #e3f2fd;
+        border: 1px solid #bbdefb;
+    }
+
+    .legend-color.booked {
+        background-color: #ffecb3;
+        border: 1px solid #ffe082;
+    }
+
+    .legend-color.past {
+        background-color: #f5f5f5;
+        border: 1px solid #e0e0e0;
+    }
+
+.calendar-loading {
+    text-align: center;
+    padding: 20px;
+}
+
+/* Booking Form Styles */
+.course-booking-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.course-section, .participants-section, .terms-section {
+    margin-bottom: 30px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+    .course-section h3, .participants-section h3, .terms-section h3 {
+        margin-top: 0;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+.participant-entry {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: white;
+}
+
+.remove-participant {
+    margin-left: 10px;
+}
+
+/* Booking Detail Styles */
+.course-booking-detail {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.booking-details-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.booking-section, .participants-section {
+    flex: 1;
+    min-width: 300px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.booking-actions {
+    margin-top: 20px;
+    text-align: center;
+}
+
+    .booking-actions .btn {
+        margin: 0 5px;
+    }
+
+.voucher-code {
+    display: flex;
+    align-items: center;
+}
+
+#voucherCode {
+    font-family: monospace;
+    font-size: 16px;
+    background-color: #f0f0f0;
+    padding: 5px 10px;
+    border-radius: 3px;
+    margin-right: 10px;
+}
+
+.status-cancelled {
+    color: #d32f2f;
+    font-weight: bold;
+}
+
+.status-completed {
+    color: #388e3c;
+    font-weight: bold;
+}
+
+.status-active {
+    color: #1976d2;
+    font-weight: bold;
+}
+
+.participants-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .participants-table th,
+    .participants-table td {
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+
+    .participants-table th {
+        background-color: #f5f5f5;
+        text-align: left;
+    }
+
+.attendance-status {
+    width: 100%;
+}
+
+.update-success {
+    border-color: #4caf50;
+    background-color: #e8f5e9;
+}
+
+.update-error {
+    border-color: #f44336;
+    background-color: #ffebee;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .calendar-controls {
+        flex-direction: column;
+    }
+
+    .calendar-month-selector, .calendar-jump-to {
+        margin-bottom: 10px;
+    }
+
+    .booking-details-container {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,97 @@
+﻿@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage
+
+@{
+    var moduleContext = Dnn.ModuleContext;
+
+    // Request required scripts
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+}
+
+<div class="course-calendar">
+    <div class="calendar-header">
+        <h2>Tanfolyamnaptár</h2>
+        <div class="calendar-controls">
+            <div class="calendar-month-selector">
+                <button type="button" id="prevMonth" class="btn btn-default">Előző</button>
+                <span id="currentMonthDisplay"></span>
+                <button type="button" id="nextMonth" class="btn btn-default">Következő</button>
+            </div>
+            <div class="calendar-jump-to">
+                <select id="jumpToMonth" class="form-control">
+                    <option value="1">Január</option>
+                    <option value="2">Február</option>
+                    <option value="3">Március</option>
+                    <option value="4">Április</option>
+                    <option value="5">Május</option>
+                    <option value="6">Június</option>
+                    <option value="7">Július</option>
+                    <option value="8">Augusztus</option>
+                    <option value="9">Szeptember</option>
+                    <option value="10">Október</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+                <select id="jumpToYear" class="form-control">
+                    @for (int year = DateTime.Now.Year; year <= DateTime.Now.Year + 2; year++)
+                    {
+                        <option value="@year">@year</option>
+                    }
+                </select>
+                <button type="button" id="jumpToDate" class="btn btn-primary">Go</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="calendar-body">
+        <table class="calendar-table">
+            <thead>
+                <tr>
+                    <th>Hétfő</th>
+                    <th>Kedd</th>
+                    <th>Szerda</th>
+                    <th>Csütörtök</th>
+                    <th>Péntek</th>
+                    <th>Szombat</th>
+                    <th>Vasárnap</th>
+                </tr>
+            </thead>
+            <tbody id="calendarGrid">
+                <!-- Calendar days will be rendered here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="calendar-legend">
+        <div class="legend-item"><span class="legend-color available"></span>Elérhető</div>
+        <div class="legend-item"><span class="legend-color my-booking"></span>Az én foglalásom</div>
+        <div class="legend-item"><span class="legend-color booked"></span>Foglalt</div>
+        <div class="legend-item"><span class="legend-color past"></span>Elmúlt</div>
+    </div>
+</div>
+
+@{
+    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/Scripts/calendar.js");
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var sf = $.ServicesFramework(@moduleContext.ModuleId);
+        var calendar = new CourseCalendar({
+            moduleId: @moduleContext.ModuleId,
+            initialYear: @ViewBag.CurrentYear,
+            initialMonth: @ViewBag.CurrentMonth,
+            isAdmin: @(ViewBag.IsAdmin ? "true" : "false"),
+            apiUrl: sf.getServiceRoot('CourseBooking') + 'CourseApi/',
+            createUrl: '@Url.Action("Create", "Calendar")',
+            detailUrl: '@Url.Action("Detail", "Calendar")',
+            antiForgeryToken: sf.getAntiForgeryValue()
+        });
+
+        calendar.initialize();
+    });
+</script>

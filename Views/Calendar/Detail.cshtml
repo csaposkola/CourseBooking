@@ -1,0 +1,177 @@
+@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+@using System.Linq
+@using CourseBooking.Models
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<BookingEntity>
+
+@{
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+
+    var participants = ViewBag.Participants as IEnumerable<ParticipantEntity> ?? Enumerable.Empty<ParticipantEntity>();
+    var localStartTime = Model.StartTime.ToLocalTime();
+    var localEndTime = Model.EndTime.ToLocalTime();
+    var isAdmin = ViewBag.IsAdmin as bool? ?? false;
+    var canCancel = ViewBag.CanCancel as bool? ?? false;
+}
+
+<div class="course-booking-detail">
+    <h2>Booking Details</h2>
+
+    <div class="booking-details-container">
+        <div class="booking-section">
+            <h3>Course Information</h3>
+
+            <div class="form-group">
+                <label class="control-label col-md-4">Booking Reference</label>
+                <div class="col-md-8">
+                    <p class="form-control-static">@Model.ID</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-md-4">Course Name</label>
+                <div class="col-md-8">
+                    <p class="form-control-static">@Model.CoursePlan.Name</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-md-4">Date</label>
+                <div class="col-md-8">
+                    <p class="form-control-static">@localStartTime.ToString("d MMMM yyyy")</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-md-4">Time</label>
+                <div class="col-md-8">
+                    <p class="form-control-static">@localStartTime.ToString("HH:mm") - @localEndTime.ToString("HH:mm")</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="control-label col-md-4">Status</label>
+                <div class="col-md-8">
+                    <p class="form-control-static">
+                        @if (Model.IsCancelled)
+                        {
+                            <span class="status-cancelled">Cancelled</span>
+                        }
+                        else if (Model.StartTime < DateTime.UtcNow)
+                        {
+                            <span class="status-completed">Completed</span>
+                        }
+                        else
+                        {
+                            <span class="status-active">Active</span>
+                        }
+                    </p>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.VoucherCode))
+            {
+                <div class="form-group">
+                    <label class="control-label col-md-4">Voucher Code</label>
+                    <div class="col-md-8">
+                        <div class="voucher-code">
+                            <span id="voucherCode">@Model.VoucherCode</span>
+                            <button type="button" id="copyVoucher" class="btn btn-sm btn-default">
+                                <i class="fa fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="participants-section">
+            <h3>Participants</h3>
+
+            @if (participants.Any())
+            {
+                <table class="participants-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            @if (isAdmin)
+                            {
+                                <th>Status</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var participant in participants)
+                        {
+                            <tr>
+                                <td>@participant.ParticipantName</td>
+                                <td>@participant.Email</td>
+                                @if (isAdmin)
+                                {
+                                    <td>
+                                        <select class="attendance-status form-control" data-participant-id="@participant.ID">
+                                            <option value="Registered" @(participant.AttendanceStatus == "Registered" ? "selected" : "")>Registered</option>
+                                            <option value="Attended" @(participant.AttendanceStatus == "Attended" ? "selected" : "")>Attended</option>
+                                            <option value="NoShow" @(participant.AttendanceStatus == "NoShow" ? "selected" : "")>No-Show</option>
+                                        </select>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>No participants yet</p>
+            }
+        </div>
+    </div>
+
+    <div class="booking-actions">
+        @if (canCancel && !Model.IsCancelled)
+        {
+            using (Html.BeginForm("Cancel", "Calendar", new { id = Model.ID }, FormMethod.Post, new { @class = "cancel-form", onsubmit = "return confirm('Are you sure you want to cancel this booking?');" }))
+            {
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger">Cancel Booking</button>
+            }
+        }
+
+        <a href="@Url.Action("Index")" class="btn btn-default">Back to Calendar</a>
+    </div>
+</div>
+
+@{
+    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        // Copy voucher code
+        $("#copyVoucher").click(function () {
+            var voucherText = $("#voucherCode").text();
+
+            // Create temporary element
+            var tempInput = $("<input>");
+            $("body").append(tempInput);
+            tempInput.val(voucherText).select();
+
+            // Execute copy command
+            document.execCommand("copy");
+            tempInput.remove();
+
+            // Show success message
+            var $btn = $(this);
+            var originalHtml = $btn.html();
+            $btn.html('<i class="fa fa-check"></i>');
+
+            setTimeout(function () {
+                $btn.html(originalHtml);
+            }, 1500);
+        });
+    });
+</script>

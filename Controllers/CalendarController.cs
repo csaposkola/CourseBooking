@@ -13,11 +13,19 @@ namespace CourseBooking.Controllers
     [DnnHandleError]
     public class CalendarController : DnnController
     {
-        private readonly IBookingService _bookingService;
+        private IBookingService _bookingService;
 
-        public CalendarController()
+        // Lazy-initialize the booking service
+        protected IBookingService BookingService
         {
-            _bookingService = new BookingService(ActiveModule.ModuleID, PortalSettings.PortalId);
+            get
+            {
+                if (_bookingService == null && ActiveModule != null)
+                {
+                    _bookingService = new BookingService(ActiveModule.ModuleID, PortalSettings.PortalId);
+                }
+                return _bookingService;
+            }
         }
 
         [ModuleAction(ControlKey = "Edit", TitleKey = "Edit")]
@@ -44,7 +52,7 @@ namespace CourseBooking.Controllers
 
             // Get all course plans for dropdown
             bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-            var coursePlans = _bookingService.FindCoursePlans(isAdmin);
+            var coursePlans = BookingService.FindCoursePlans(isAdmin);
 
             ViewBag.StartTime = startTime;
             ViewBag.CoursePlans = coursePlans;
@@ -59,7 +67,7 @@ namespace CourseBooking.Controllers
             if (!ModelState.IsValid)
             {
                 bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-                ViewBag.CoursePlans = _bookingService.FindCoursePlans(isAdmin);
+                ViewBag.CoursePlans = BookingService.FindCoursePlans(isAdmin);
                 ViewBag.StartTime = booking.StartTime;
                 return View(booking);
             }
@@ -73,7 +81,7 @@ namespace CourseBooking.Controllers
                 booking.PaymentStatus = "Pending";
 
                 // Create the booking
-                var newBooking = _bookingService.CreateBooking(booking);
+                var newBooking = BookingService.CreateBooking(booking);
 
                 // Add participants
                 if (participantNames != null && participantEmails != null)
@@ -89,13 +97,13 @@ namespace CourseBooking.Controllers
                                 AddedByUserID = DotNetNuke.Entities.Users.UserController.Instance.GetCurrentUserInfo().UserID
                             };
 
-                            _bookingService.AddParticipantToBooking(newBooking.ID, participant);
+                            BookingService.AddParticipantToBooking(newBooking.ID, participant);
                         }
                     }
                 }
 
                 // Send confirmation emails
-                _bookingService.SendBookingConfirmation(newBooking.ID);
+                BookingService.SendBookingConfirmation(newBooking.ID);
 
                 return RedirectToAction("Detail", new { id = newBooking.ID });
             }
@@ -103,7 +111,7 @@ namespace CourseBooking.Controllers
             {
                 ModelState.AddModelError("", "Error creating booking: " + ex.Message);
                 bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-                ViewBag.CoursePlans = _bookingService.FindCoursePlans(isAdmin);
+                ViewBag.CoursePlans = BookingService.FindCoursePlans(isAdmin);
                 ViewBag.StartTime = booking.StartTime;
                 return View(booking);
             }
@@ -111,7 +119,7 @@ namespace CourseBooking.Controllers
 
         public ActionResult Detail(int id)
         {
-            var booking = _bookingService.FindBookingById(id);
+            var booking = BookingService.FindBookingById(id);
             if (booking == null)
             {
                 return HttpNotFound();
@@ -144,7 +152,7 @@ namespace CourseBooking.Controllers
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
         public ActionResult Cancel(int id)
         {
-            var booking = _bookingService.FindBookingById(id);
+            var booking = BookingService.FindBookingById(id);
             if (booking == null)
             {
                 return HttpNotFound();
@@ -159,7 +167,7 @@ namespace CourseBooking.Controllers
                 return new HttpUnauthorizedResult();
             }
 
-            if (_bookingService.CancelBooking(id))
+            if (BookingService.CancelBooking(id))
             {
                 return RedirectToAction("Detail", new { id = id });
             }

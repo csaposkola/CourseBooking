@@ -12,11 +12,18 @@ namespace CourseBooking.Controllers.Api
     [DotNetNuke.Web.Api.ValidateAntiForgeryTokenAttribute]
     public class CourseApiController : DotNetNuke.Web.Api.DnnApiController
     {
-        private readonly IBookingService _bookingService;
+        private IBookingService _bookingService;
 
-        public CourseApiController()
+        protected IBookingService BookingService
         {
-            _bookingService = new BookingService(ActiveModule.ModuleID, PortalSettings.PortalId);
+            get
+            {
+                if (_bookingService == null && ActiveModule != null)
+                {
+                    _bookingService = new BookingService(ActiveModule.ModuleID, PortalSettings.PortalId);
+                }
+                return _bookingService;
+            }
         }
 
         #region Course Plans
@@ -28,7 +35,7 @@ namespace CourseBooking.Controllers.Api
             try
             {
                 bool isAdmin = UserInfo.IsInRole("Administrators") || UserInfo.IsSuperUser;
-                var plans = _bookingService.FindCoursePlans(isAdmin);
+                var plans = BookingService.FindCoursePlans(isAdmin);
                 return Request.CreateResponse(HttpStatusCode.OK, plans);
             }
             catch (Exception ex)
@@ -57,12 +64,12 @@ namespace CourseBooking.Controllers.Api
                 if (isAdmin)
                 {
                     // Admins can see all bookings
-                    bookings = _bookingService.FindBookingsByDate(startDate, endDate, true);
+                    bookings = BookingService.FindBookingsByDate(startDate, endDate, true);
                 }
                 else
                 {
                     // Regular users can only see their own bookings
-                    bookings = _bookingService.FindBookingsByUser(UserInfo.UserID, startDate, endDate);
+                    bookings = BookingService.FindBookingsByUser(UserInfo.UserID, startDate, endDate);
                 }
 
                 return Request.CreateResponse(HttpStatusCode.OK, bookings);
@@ -78,7 +85,7 @@ namespace CourseBooking.Controllers.Api
         {
             try
             {
-                var booking = _bookingService.FindBookingById(id);
+                var booking = BookingService.FindBookingById(id);
 
                 if (booking == null)
                 {
@@ -117,7 +124,7 @@ namespace CourseBooking.Controllers.Api
                 booking.CreatedByUserID = UserInfo.UserID;
                 booking.CreatedDate = DateTime.UtcNow;
 
-                var newBooking = _bookingService.CreateBooking(booking);
+                var newBooking = BookingService.CreateBooking(booking);
                 return Request.CreateResponse(HttpStatusCode.OK, newBooking);
             }
             catch (ArgumentException ex)
@@ -140,7 +147,7 @@ namespace CourseBooking.Controllers.Api
         {
             try
             {
-                var booking = _bookingService.FindBookingById(id);
+                var booking = BookingService.FindBookingById(id);
 
                 if (booking == null)
                 {
@@ -156,7 +163,7 @@ namespace CourseBooking.Controllers.Api
                     return Request.CreateResponse(HttpStatusCode.Forbidden, "You don't have permission to cancel this booking");
                 }
 
-                bool success = _bookingService.CancelBooking(id);
+                bool success = BookingService.CancelBooking(id);
                 return Request.CreateResponse(HttpStatusCode.OK, new { Success = success });
             }
             catch (Exception ex)
@@ -180,7 +187,7 @@ namespace CourseBooking.Controllers.Api
                     return Request.CreateResponse(HttpStatusCode.BadRequest, "Invalid participant data");
                 }
 
-                var booking = _bookingService.FindBookingById(bookingId);
+                var booking = BookingService.FindBookingById(bookingId);
 
                 if (booking == null)
                 {
@@ -199,7 +206,7 @@ namespace CourseBooking.Controllers.Api
                 // Set the user ID
                 participant.AddedByUserID = UserInfo.UserID;
 
-                var newParticipant = _bookingService.AddParticipantToBooking(bookingId, participant);
+                var newParticipant = BookingService.AddParticipantToBooking(bookingId, participant);
                 return Request.CreateResponse(HttpStatusCode.OK, newParticipant);
             }
             catch (ArgumentException ex)
@@ -221,7 +228,7 @@ namespace CourseBooking.Controllers.Api
         {
             try
             {
-                var booking = _bookingService.FindBookingById(bookingId);
+                var booking = BookingService.FindBookingById(bookingId);
 
                 if (booking == null)
                 {
@@ -262,7 +269,7 @@ namespace CourseBooking.Controllers.Api
                     return Request.CreateResponse(HttpStatusCode.Forbidden, "Only administrators can update attendance status");
                 }
 
-                bool success = _bookingService.UpdateParticipantStatus(participantId, status);
+                bool success = BookingService.UpdateParticipantStatus(participantId, status);
                 return Request.CreateResponse(HttpStatusCode.OK, new { Success = success });
             }
             catch (ArgumentException ex)
@@ -291,7 +298,7 @@ namespace CourseBooking.Controllers.Api
                     return Request.CreateResponse(HttpStatusCode.Forbidden, "Only administrators can send reminders");
                 }
 
-                bool success = _bookingService.SendCourseReminder(bookingId, hoursBeforeCourse);
+                bool success = BookingService.SendCourseReminder(bookingId, hoursBeforeCourse);
                 return Request.CreateResponse(HttpStatusCode.OK, new { Success = success });
             }
             catch (Exception ex)
