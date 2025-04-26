@@ -1,0 +1,131 @@
+﻿-- Create CoursePlans table if not exists
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CoursePlans]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE {databaseOwner}[{objectQualifier}CoursePlans]
+    (
+        [ID] INT NOT NULL IDENTITY (1, 1)
+        CONSTRAINT [PK_CoursePlans] PRIMARY KEY CLUSTERED,
+        [Name] NVARCHAR(100) NOT NULL,
+        [DurationHours] INT NOT NULL,
+        [Description] NVARCHAR(MAX) NULL,
+        [MaxCapacity] INT NOT NULL,
+        [Price] DECIMAL(10,2) NOT NULL,
+        [IsPublic] BIT NOT NULL DEFAULT 1,
+        [PrerequisiteIds] NVARCHAR(100) NULL,
+        [CourseCategory] NVARCHAR(50) NOT NULL
+    ) ON [PRIMARY]
+END
+GO
+
+-- Insert initial course plans if empty
+IF NOT EXISTS (SELECT TOP 1 * FROM {databaseOwner}[{objectQualifier}CoursePlans])
+BEGIN
+    INSERT INTO {databaseOwner}[{objectQualifier}CoursePlans]
+    (Name, DurationHours, Description, MaxCapacity, Price, IsPublic, CourseCategory)
+    VALUES
+    ('Basic Beer Brewing', 2, 'Bevezetés a sörfőzés alapjaiba, eszközök, alapanyagok és alaptechnikák bemutatásával.', 10, 29.99, 1, 'Brewing'),
+    ('Advanced Brewing Techniques', 3, 'Gyakorlott házi sörfőzőknek szóló képzés, vízkémia és élesztőkezelés mélyebb ismeretével.', 8, 49.99, 1, 'Brewing'),
+    ('Cocktail Mastery Course', 2, 'Átfogó bevezetés a koktélkészítés művészetébe, klasszikus és modern receptekkel.', 12, 34.99, 1, 'Cocktail'),
+    ('Gin & Tonic Special', 1, 'Egyedi workshop a tökéletes gin-tonik párosításokról és variációkról.', 15, 19.99, 1, 'Cocktail'),
+    ('Homemade Liqueur Preparation', 4, 'Részletes útmutató a házi likőrök előállításáról különféle alapanyagokból.', 6, 59.99, 1, 'Liqueur')
+END
+GO
+
+-- Create CourseSchedules table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseSchedules]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE {databaseOwner}[{objectQualifier}CourseSchedules]
+    (
+        [ID] INT NOT NULL IDENTITY (1, 1)
+        CONSTRAINT [PK_CourseSchedules] PRIMARY KEY CLUSTERED,
+        [CoursePlanID] INT NOT NULL
+        CONSTRAINT [FK_CourseSchedules_CoursePlans] FOREIGN KEY
+        REFERENCES {databaseOwner}[{objectQualifier}CoursePlans] (ID),
+        [StartTime] DATETIME NOT NULL,
+        [CreatedByUserID] INT NOT NULL,
+        [CreatedDate] DATETIME NOT NULL DEFAULT GETUTCDATE(),
+        [AvailableSeats] INT NOT NULL,
+        [IsActive] BIT NOT NULL DEFAULT 1
+    ) ON [PRIMARY]
+END
+GO
+
+CREATE INDEX [IX_CourseSchedules_StartTime] ON {databaseOwner}[{objectQualifier}CourseSchedules] (StartTime)
+GO
+
+-- Create CourseBookings table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseBookings]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE {databaseOwner}[{objectQualifier}CourseBookings]
+    (
+        [ID] INT NOT NULL IDENTITY (1, 1)
+        CONSTRAINT [PK_CourseBookings] PRIMARY KEY CLUSTERED,
+        [CourseScheduleID] INT NOT NULL
+        CONSTRAINT [FK_CourseBookings_CourseSchedules] FOREIGN KEY
+        REFERENCES {databaseOwner}[{objectQualifier}CourseSchedules] (ID),
+        [UserID] INT NOT NULL,
+        [BookingTime] DATETIME NOT NULL DEFAULT GETUTCDATE(),
+        [IsCancelled] BIT NOT NULL DEFAULT 0,
+        [VoucherCode] NVARCHAR(50) NULL,
+        [VoucherSentDate] DATETIME NULL,
+        [PaymentStatus] NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+        [PaymentReference] NVARCHAR(100) NULL,
+        [Notes] NVARCHAR(500) NULL
+    ) ON [PRIMARY]
+END
+GO
+
+CREATE INDEX [IX_CourseBookings_UserID] ON {databaseOwner}[{objectQualifier}CourseBookings] (UserID)
+GO
+
+CREATE INDEX [IX_CourseBookings_CourseScheduleID] ON {databaseOwner}[{objectQualifier}CourseBookings] (CourseScheduleID)
+GO
+
+-- Create CourseParticipants table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseParticipants]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE {databaseOwner}[{objectQualifier}CourseParticipants]
+    (
+        [ID] INT NOT NULL IDENTITY (1, 1)
+        CONSTRAINT [PK_CourseParticipants] PRIMARY KEY CLUSTERED,
+        [BookingID] INT NOT NULL
+        CONSTRAINT [FK_CourseParticipants_CourseBookings] FOREIGN KEY
+        REFERENCES {databaseOwner}[{objectQualifier}CourseBookings] (ID),
+        [AttendanceStatus] NVARCHAR(50) NOT NULL DEFAULT 'Registered'
+    ) ON [PRIMARY]
+END
+GO
+
+-- Create CourseNotifications table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseNotifications]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE {databaseOwner}[{objectQualifier}CourseNotifications]
+    (
+        [ID] INT NOT NULL IDENTITY (1, 1)
+        CONSTRAINT [PK_CourseNotifications] PRIMARY KEY CLUSTERED,
+        [BookingID] INT NOT NULL
+        CONSTRAINT [FK_CourseNotifications_CourseBookings] FOREIGN KEY
+        REFERENCES {databaseOwner}[{objectQualifier}CourseBookings] (ID),
+        [NotificationType] NVARCHAR(50) NOT NULL,
+        [Recipients] NVARCHAR(MAX) NOT NULL,
+        [SentDate] DATETIME NOT NULL DEFAULT GETUTCDATE(),
+        [TemplateUsed] NVARCHAR(100) NOT NULL,
+        [IsDeliverySuccessful] BIT NOT NULL DEFAULT 0,
+        [ErrorLog] NVARCHAR(500) NULL
+    ) ON [PRIMARY]
+END
+GO
+
+-- Insert sample course schedules if none exist
+IF NOT EXISTS (SELECT TOP 1 * FROM {databaseOwner}[{objectQualifier}CourseSchedules])
+BEGIN
+    INSERT INTO {databaseOwner}[{objectQualifier}CourseSchedules]
+    (CoursePlanID, StartTime, CreatedByUserID, CreatedDate, AvailableSeats, IsActive)
+    VALUES
+    (1, DATEADD(DAY, 7, GETUTCDATE()), 1, GETUTCDATE(), 10, 1),
+    (2, DATEADD(DAY, 8, GETUTCDATE()), 1, GETUTCDATE(), 8, 1),
+    (3, DATEADD(DAY, 9, GETUTCDATE()), 1, GETUTCDATE(), 12, 1),
+    (4, DATEADD(DAY, 14, GETUTCDATE()), 1, GETUTCDATE(), 15, 1),
+    (5, DATEADD(DAY, 21, GETUTCDATE()), 1, GETUTCDATE(), 6, 1)
+END
+GO

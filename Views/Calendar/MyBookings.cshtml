@@ -1,0 +1,173 @@
+﻿@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+@using CourseBooking.Models
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<IEnumerable<BookingEntity>>
+
+@{
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+
+    var hasUpcomingBookings = System.Linq.Enumerable.Any(Model, b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow);
+    var hasPastBookings = System.Linq.Enumerable.Any(Model, b => b.CourseSchedule.StartTime <= DateTime.UtcNow);
+}
+
+<div class="user-bookings">
+    <h2>Az Ön foglalásai</h2>
+
+    @if (!System.Linq.Enumerable.Any(Model))
+    {
+        <div class="alert alert-info">
+            <p>Önnek még nincs foglalása. <a href="@Url.Action("Index")">Nézze meg a tanfolyam naptárat</a> új foglalás létrehozásához.</p>
+        </div>
+    }
+    else
+    {
+        if (hasUpcomingBookings)
+        {
+            <h3>Közelgő foglalások</h3>
+            <div class="bookings-table-container">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tanfolyam</th>
+                            <th>Dátum</th>
+                            <th>Időpont</th>
+                            <th>Foglalás ideje</th>
+                            <th>Kupon kód</th>
+                            <th>Státusz</th>
+                            <th>Műveletek</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in System.Linq.Enumerable.OrderBy(
+                            System.Linq.Enumerable.Where(Model, b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow),
+                            b => b.CourseSchedule.StartTime))
+                        {
+                            var localStartTime = booking.CourseSchedule.StartTime.ToLocalTime();
+                            var localEndTime = booking.CourseSchedule.EndTime.ToLocalTime();
+
+                            <tr>
+                                <td>@booking.CourseSchedule.CoursePlan.Name</td>
+                                <td>@localStartTime.ToString("yyyy. MMMM d.")</td>
+                                <td>@localStartTime.ToString("HH:mm") - @localEndTime.ToString("HH:mm")</td>
+                                <td>@booking.BookingTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(booking.VoucherCode))
+                                    {
+                                        <span class="voucher-code">@booking.VoucherCode</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (booking.IsCancelled)
+                                    {
+                                        <span class="badge badge-secondary">Lemondva</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-success">Aktív</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" class="btn btn-sm btn-default">
+                                            <i class="fa fa-search"></i> Részletek
+                                        </a>
+
+                                        @if (!booking.IsCancelled && booking.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
+                                        {
+                                            using (Html.BeginForm("Cancel", "Calendar", new { id = booking.ID }, FormMethod.Post, new { @class = "d-inline cancel-form", onsubmit = "return confirm('Biztosan lemondja a foglalást?');" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="fa fa-times"></i> Lemondás
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        if (hasPastBookings)
+        {
+            <h3>Korábbi foglalások</h3>
+            <div class="bookings-table-container">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tanfolyam</th>
+                            <th>Dátum</th>
+                            <th>Időpont</th>
+                            <th>Foglalás ideje</th>
+                            <th>Kupon kód</th>
+                            <th>Státusz</th>
+                            <th>Műveletek</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in System.Linq.Enumerable.OrderByDescending(
+                            System.Linq.Enumerable.Where(Model, b => b.IsCancelled || b.CourseSchedule.StartTime <= DateTime.UtcNow),
+                            b => b.CourseSchedule.StartTime))
+                        {
+                            var localStartTime = booking.CourseSchedule.StartTime.ToLocalTime();
+                            var localEndTime = booking.CourseSchedule.EndTime.ToLocalTime();
+
+                            <tr class="@(booking.IsCancelled ? "cancelled-row" : "")">
+                                <td>@booking.CourseSchedule.CoursePlan.Name</td>
+                                <td>@localStartTime.ToString("yyyy. MMMM d.")</td>
+                                <td>@localStartTime.ToString("HH:mm") - @localEndTime.ToString("HH:mm")</td>
+                                <td>@booking.BookingTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(booking.VoucherCode))
+                                    {
+                                        <span class="voucher-code">@booking.VoucherCode</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (booking.IsCancelled)
+                                    {
+                                        <span class="badge badge-secondary">Lemondva</span>
+                                    }
+                                    else if (booking.CourseSchedule.StartTime <= DateTime.UtcNow)
+                                    {
+                                        <span class="badge badge-info">Lezajlott</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" class="btn btn-sm btn-default">
+                                        <i class="fa fa-search"></i> Részletek
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+
+    <div class="booking-actions">
+        <a href="@Url.Action("Index")" class="btn btn-default">
+            <i class="fa fa-calendar"></i> Vissza a naptárhoz
+        </a>
+    </div>
+</div>
+
+@{
+    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
+}

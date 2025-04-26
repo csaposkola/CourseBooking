@@ -58,6 +58,9 @@
     <Reference Include="DotNetNuke.Web, Version=9.13.9.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\DotNetNuke.Web.9.13.9\lib\net45\DotNetNuke.Web.dll</HintPath>
     </Reference>
+    <Reference Include="DotNetNuke.Web.Client, Version=9.13.9.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\DotNetNuke.Web.Client.9.13.9\lib\net45\DotNetNuke.Web.Client.dll</HintPath>
+    </Reference>
     <Reference Include="DotNetNuke.Web.Mvc, Version=9.8.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\bin\DotNetNuke.Web.Mvc.dll</HintPath>
@@ -153,11 +156,13 @@
     </Compile>
     <Compile Include="Components\FeatureController.cs" />
     <Compile Include="Components\ItemManager.cs" />
-    <Compile Include="Controllers\Api\ApiController.cs" />
+    <Compile Include="Controllers\Api\CourseApiController.cs" />
     <Compile Include="Controllers\CalendarController.cs" />
+    <Compile Include="Controllers\ScheduleAdminController.cs" />
     <Compile Include="Controllers\SettingsController.cs" />
     <Compile Include="Models\BookingEntity.cs" />
     <Compile Include="Models\CoursePlanEntity.cs" />
+    <Compile Include="Models\CourseScheduleEntity.cs" />
     <Compile Include="Models\Item.cs" />
     <Compile Include="Controllers\ItemController.cs" />
     <Compile Include="Models\NotificationEntity.cs" />
@@ -191,7 +196,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Providers\DataProviders\SqlDataProvider\01.00.00.SqlDataProvider" />
+    <Content Include="Providers\DataProviders\SqlDataProvider\01.00.01.SqlDataProvider" />
     <Content Include="Providers\DataProviders\SqlDataProvider\Uninstall.SqlDataProvider" />
   </ItemGroup>
   <ItemGroup>
@@ -213,6 +218,12 @@
     <Content Include="Views\Calendar\Index.cshtml" />
     <Content Include="Views\Calendar\Detail.cshtml" />
     <Content Include="Views\Calendar\Create.cshtml" />
+    <Content Include="Views\ScheduleAdmin\Index.cshtml" />
+    <Content Include="Views\ScheduleAdmin\Create.cshtml" />
+    <Content Include="Views\ScheduleAdmin\Bookings.cshtml" />
+    <Content Include="Views\Calendar\MyBookings.cshtml" />
+    <Content Include="Views\Calendar\Confirmation.cshtml" />
+    <Content Include="Views\ScheduleAdmin\Edit.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

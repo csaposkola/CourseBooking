@@ -1,0 +1,176 @@
+﻿@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using DotNetNuke.Web.Client
+@using DotNetNuke.Framework.JavaScriptLibraries
+@using CourseBooking.Models
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<BookingEntity>
+
+@{
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+
+    var localStartTime = Model.CourseSchedule.StartTime.ToLocalTime();
+    var localEndTime = Model.CourseSchedule.EndTime.ToLocalTime();
+}
+
+<div class="booking-confirmation">
+    <div class="panel panel-success">
+        <div class="panel-heading">
+            <h3 class="panel-title"><i class="fa fa-check-circle"></i> Foglalás visszaigazolása</h3>
+        </div>
+        <div class="panel-body">
+            <h4>Köszönjük a foglalását!</h4>
+            <p>Az Ön foglalása <strong>@Model.CourseSchedule.CoursePlan.Name</strong> tanfolyamra sikeresen rögzítésre került.</p>
+
+            <div class="booking-details">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Tanfolyam adatok</h5>
+                        <dl class="dl-horizontal">
+                            <dt>Tanfolyam neve:</dt>
+                            <dd>@Model.CourseSchedule.CoursePlan.Name</dd>
+
+                            <dt>Kategória:</dt>
+                            <dd>@Model.CourseSchedule.CoursePlan.CourseCategory</dd>
+
+                            <dt>Dátum:</dt>
+                            <dd>@localStartTime.ToString("yyyy. MMMM d.")</dd>
+
+                            <dt>Időpont:</dt>
+                            <dd>@localStartTime.ToString("HH:mm") - @localEndTime.ToString("HH:mm")</dd>
+
+                            <dt>Időtartam:</dt>
+                            <dd>@Model.CourseSchedule.CoursePlan.DurationHours óra</dd>
+                        </dl>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5>Foglalási adatok</h5>
+                        <dl class="dl-horizontal">
+                            <dt>Foglalási azonosító:</dt>
+                            <dd>@Model.ID</dd>
+
+                            <dt>Foglalás ideje:</dt>
+                            <dd>@Model.BookingTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</dd>
+
+                            <dt>Kupon kód:</dt>
+                            <dd>
+                                <div class="voucher-container">
+                                    <span id="voucherCode">@Model.VoucherCode</span>
+                                    <button id="copyVoucher" class="btn btn-xs btn-default" title="Másolás a vágólapra">
+                                        <i class="fa fa-copy"></i>
+                                    </button>
+                                </div>
+                            </dd>
+
+                            <dt>Fizetési állapot:</dt>
+                            <dd>@Model.PaymentStatus</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <div class="booking-instructions">
+                <div class="alert alert-info">
+                    <h5><i class="fa fa-info-circle"></i> Fontos információk</h5>
+                    <ul>
+                        <li>A kupon kódot a tanfolyamon való részvételkor kell felmutatni.</li>
+                        <li>A foglalást legkésőbb 24 órával a tanfolyam kezdete előtt lehet lemondani.</li>
+                        <li>A foglalásról visszaigazoló e-mailt küldtünk a megadott e-mail címre.</li>
+                        <li>Kérdés esetén keresse ügyfélszolgálatunkat.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="confirmation-actions">
+        @if (!Model.IsCancelled && Model.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
+        {
+            using (Html.BeginForm("Cancel", "Calendar", new { id = Model.ID }, FormMethod.Post, new { @class = "d-inline cancel-form", onsubmit = "return confirm('Biztosan lemondja a foglalást?');" }))
+            {
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger">
+                    <i class="fa fa-times"></i> Foglalás lemondása
+                </button>
+            }
+        }
+
+        <a href="@Url.Action("MyBookings")" class="btn btn-primary">
+            <i class="fa fa-list"></i> Foglalásaim megtekintése
+        </a>
+
+        <a href="@Url.Action("Index")" class="btn btn-default">
+            <i class="fa fa-calendar"></i> Vissza a naptárhoz
+        </a>
+    </div>
+</div>
+
+@{
+    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
+}
+
+<style>
+    .booking-confirmation {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .booking-details {
+        margin: 20px 0;
+    }
+
+    .confirmation-actions {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+        .confirmation-actions .btn {
+            margin: 0 5px;
+        }
+
+    .voucher-container {
+        display: flex;
+        align-items: center;
+    }
+
+    #voucherCode {
+        font-family: monospace;
+        font-size: 14px;
+        background-color: #f0f0f0;
+        padding: 3px 8px;
+        border-radius: 3px;
+        margin-right: 5px;
+    }
+
+    .d-inline {
+        display: inline-block;
+    }
+</style>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        // Copy voucher code
+        $("#copyVoucher").click(function () {
+            var voucherText = $("#voucherCode").text();
+
+            // Create temporary element
+            var tempInput = $("<input>");
+            $("body").append(tempInput);
+            tempInput.val(voucherText).select();
+
+            // Execute copy command
+            document.execCommand("copy");
+            tempInput.remove();
+
+            // Show success message
+            var $btn = $(this);
+            var originalHtml = $btn.html();
+            $btn.html('<i class="fa fa-check"></i>');
+
+            setTimeout(function () {
+                $btn.html(originalHtml);
+            }, 1500);
+        });
+    });
+</script>

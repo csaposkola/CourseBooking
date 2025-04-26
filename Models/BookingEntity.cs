@@ -11,21 +11,23 @@ namespace CourseBooking.Models
     public class BookingEntity
     {
         public int ID { get; set; }
-        public int CreatedByUserID { get; set; }
-        public DateTime CreatedDate { get; set; }
+        public int CourseScheduleID { get; set; }
+        public int UserID { get; set; }
+        public DateTime BookingTime { get; set; }
         public bool IsCancelled { get; set; }
-        public DateTime StartTime { get; set; }
-        public int DurationHours { get; set; }
-        public int CoursePlanID { get; set; }
         public string VoucherCode { get; set; }
         public DateTime? VoucherSentDate { get; set; }
         public string PaymentStatus { get; set; }
         public string PaymentReference { get; set; }
+        public string Notes { get; set; }
 
         [IgnoreColumn]
-        public CoursePlanEntity CoursePlan { get; set; }
+        public CourseScheduleEntity CourseSchedule { get; set; }
 
         [IgnoreColumn]
-        public DateTime EndTime => StartTime.AddHours(DurationHours);
+        public string UserDisplayName { get; set; }
+
+        [IgnoreColumn]
+        public string UserEmail { get; set; }
     }
 }

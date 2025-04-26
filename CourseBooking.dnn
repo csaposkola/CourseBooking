@@ -1,6 +1,6 @@
 <dotnetnuke type="Package" version="5.0">
 	<packages>
-		<package name="CourseBooking" type="Module" version="01.00.00">
+		<package name="CourseBooking" type="Module" version="01.00.01">
 			<friendlyName>Course Booking</friendlyName>
 			<description>Tanfolyamidőpont-foglaló modul</description>
 			<iconFile>DesktopModules/MVC/CourseBooking/Images/logo.png</iconFile>
@@ -22,13 +22,13 @@
 						<basePath>DesktopModules\MVC\CourseBooking</basePath>
 						<script type="Install">
 							<path>Providers\DataProviders\SqlDataProvider</path>
-							<name>01.00.00.SqlDataProvider</name>
-							<version>01.00.00</version>
+							<name>01.00.01.SqlDataProvider</name>
+							<version>01.00.01</version>
 						</script>
 						<script type="UnInstall">
 							<path>Providers\DataProviders\SqlDataProvider</path>
 							<name>Uninstall.SqlDataProvider</name>
-							<version>01.00.00</version>
+							<version>01.00.01</version>
 						</script>
 					</scripts>
 				</component>
@@ -54,10 +54,10 @@
 										<viewOrder>0</viewOrder>
 									</moduleControl>
 									<moduleControl>
-										<controlKey>Create</controlKey>
-										<controlSrc>CourseBooking.Controllers/Calendar/Create.mvc</controlSrc>
+										<controlKey>Details</controlKey>
+										<controlSrc>CourseBooking.Controllers/Calendar/Details.mvc</controlSrc>
 										<supportsPartialRendering>False</supportsPartialRendering>
-										<controlTitle>Create Booking</controlTitle>
+										<controlTitle>Course Details</controlTitle>
 										<controlType>View</controlType>
 										<iconFile />
 										<helpUrl />
@@ -65,15 +65,75 @@
 										<supportsPopUps>True</supportsPopUps>
 									</moduleControl>
 									<moduleControl>
-										<controlKey>Detail</controlKey>
-										<controlSrc>CourseBooking.Controllers/Calendar/Detail.mvc</controlSrc>
+										<controlKey>MyBookings</controlKey>
+										<controlSrc>CourseBooking.Controllers/Calendar/MyBookings.mvc</controlSrc>
 										<supportsPartialRendering>False</supportsPartialRendering>
-										<controlTitle>Booking Details</controlTitle>
+										<controlTitle>My Bookings</controlTitle>
+										<controlType>View</controlType>
+										<iconFile />
+										<helpUrl />
+										<viewOrder>0</viewOrder>
+									</moduleControl>
+									<moduleControl>
+										<controlKey>Confirmation</controlKey>
+										<controlSrc>CourseBooking.Controllers/Calendar/Confirmation.mvc</controlSrc>
+										<supportsPartialRendering>False</supportsPartialRendering>
+										<controlTitle>Booking Confirmation</controlTitle>
 										<controlType>View</controlType>
 										<iconFile />
 										<helpUrl />
 										<viewOrder>0</viewOrder>
 										<supportsPopUps>True</supportsPopUps>
+									</moduleControl>
+									<moduleControl>
+										<controlKey>Edit</controlKey>
+										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Index.mvc</controlSrc>
+										<supportsPartialRendering>False</supportsPartialRendering>
+										<controlTitle>Manage Course Schedules</controlTitle>
+										<controlType>Edit</controlType>
+										<iconFile />
+										<helpUrl />
+										<viewOrder>0</viewOrder>
+									</moduleControl>
+									<moduleControl>
+										<controlKey>ScheduleAdmin</controlKey>
+										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Index.mvc</controlSrc>
+										<supportsPartialRendering>False</supportsPartialRendering>
+										<controlTitle>Manage Schedules</controlTitle>
+										<controlType>Admin</controlType>
+										<iconFile />
+										<helpUrl />
+										<viewOrder>0</viewOrder>
+									</moduleControl>
+									<moduleControl>
+										<controlKey>ScheduleCreate</controlKey>
+										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Create.mvc</controlSrc>
+										<supportsPartialRendering>False</supportsPartialRendering>
+										<controlTitle>Create Schedule</controlTitle>
+										<controlType>Admin</controlType>
+										<iconFile />
+										<helpUrl />
+										<viewOrder>0</viewOrder>
+									</moduleControl>
+									<moduleControl>
+										<controlKey>ScheduleEdit</controlKey>
+										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Edit.mvc</controlSrc>
+										<supportsPartialRendering>False</supportsPartialRendering>
+										<controlTitle>Edit Schedule</controlTitle>
+										<controlType>Admin</controlType>
+										<iconFile />
+										<helpUrl />
+										<viewOrder>0</viewOrder>
+									</moduleControl>
+									<moduleControl>
+										<controlKey>ScheduleBookings</controlKey>
+										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Bookings.mvc</controlSrc>
+										<supportsPartialRendering>False</supportsPartialRendering>
+										<controlTitle>Schedule Bookings</controlTitle>
+										<controlType>Admin</controlType>
+										<iconFile />
+										<helpUrl />
+										<viewOrder>0</viewOrder>
 									</moduleControl>
 								</moduleControls>
 							</moduleDefinition>
@@ -85,7 +145,7 @@
 						<attributes>
 							<businessControllerClass>CourseBooking.Components.FeatureController</businessControllerClass>
 							<desktopModuleID>[DESKTOPMODULEID]</desktopModuleID>
-							<upgradeVersionsList>01.00.00</upgradeVersionsList>
+							<upgradeVersionsList>01.00.00,01.00.01</upgradeVersionsList>
 						</attributes>
 					</eventMessage>
 				</component>

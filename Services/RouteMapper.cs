@@ -10,7 +10,7 @@ namespace CourseBooking.Services
                 "CourseBooking",
                 "default",
                 "{controller}/{action}",
-                new[] { "CourseBooking.Controllers" }
+                new[] { "CourseBooking.Controllers.Api" }
             );
         }
     }

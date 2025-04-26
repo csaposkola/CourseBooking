@@ -6,26 +6,31 @@ namespace CourseBooking.Services
 {
     public interface IBookingService
     {
-        // Booking query operations
-        BookingEntity FindBookingById(int bookingId);
-        IEnumerable<BookingEntity> FindBookingsByUser(int userId, DateTime? fromDate = null, DateTime? toDate = null);
-        IEnumerable<BookingEntity> FindBookingsByDate(DateTime? fromDate = null, DateTime? toDate = null, bool includeCancelled = false);
+        // Course plan operations
+        IEnumerable<CoursePlanEntity> GetCoursePlans(bool includeNonPublic = false);
+        CoursePlanEntity GetCoursePlanById(int coursePlanId);
 
-        // Booking management operations
-        BookingEntity CreateBooking(BookingEntity booking);
-        bool IsTimeSlotAvailable(DateTime startTime, int duration, int maxCapacity, int existingBookings);
+        // Course schedule operations
+        IEnumerable<CourseScheduleEntity> GetCourseSchedules(DateTime? fromDate = null, DateTime? toDate = null, bool includeInactive = false);
+        CourseScheduleEntity GetCourseScheduleById(int scheduleId);
+        CourseScheduleEntity CreateCourseSchedule(CourseScheduleEntity schedule);
+        bool UpdateCourseSchedule(CourseScheduleEntity schedule);
+        bool DeleteCourseSchedule(int scheduleId);
+
+        // Booking operations
+        IEnumerable<BookingEntity> GetBookingsByUser(int userId);
+        IEnumerable<BookingEntity> GetBookingsByCourseSchedule(int scheduleId);
+        BookingEntity GetBookingById(int bookingId);
+        BookingEntity CreateBooking(int courseScheduleId, int userId, string notes = null);
         bool CancelBooking(int bookingId);
 
-        // Participant management operations
-        ParticipantEntity AddParticipantToBooking(int bookingId, ParticipantEntity participant);
-        bool UpdateParticipantStatus(int participantId, string status);
-
-        // Notification management operations
+        // Notification operations
         bool SendBookingConfirmation(int bookingId);
         bool SendCourseReminder(int bookingId, int hoursBeforeCourse);
-        bool SendOrganizersReport(DateTime courseStartTime, string reportType);
 
-        // Course plan management operations
-        IEnumerable<CoursePlanEntity> FindCoursePlans(bool includeAll = false);
+        // Helper operations
+        int GetBookingCountForSchedule(int scheduleId);
+        bool IsUserRegisteredForSchedule(int scheduleId, int userId);
+        bool HasScheduleAvailableSeats(int scheduleId);
     }
 }

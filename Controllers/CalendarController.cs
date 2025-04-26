@@ -15,7 +15,6 @@ namespace CourseBooking.Controllers
     {
         private IBookingService _bookingService;
 
-        // Lazy-initialize the booking service
         protected IBookingService BookingService
         {
             get
@@ -28,7 +27,7 @@ namespace CourseBooking.Controllers
             }
         }
 
-        [ModuleAction(ControlKey = "Edit", TitleKey = "Edit")]
+        [ModuleAction(ControlKey = "Edit", TitleKey = "ManageSchedules")]
         public ActionResult Index()
         {
             // Request required scripts for the calendar view
@@ -45,137 +44,127 @@ namespace CourseBooking.Controllers
             return View();
         }
 
-        public ActionResult Create(int year, int month, int day, int hour)
+        public ActionResult Details(int id)
         {
-            // Create proposed start time
-            var startTime = new DateTime(year, month, day, hour, 0, 0);
+            var schedule = BookingService.GetCourseScheduleById(id);
+            if (schedule == null)
+            {
+                return HttpNotFound();
+            }
 
-            // Get all course plans for dropdown
-            bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-            var coursePlans = BookingService.FindCoursePlans(isAdmin);
+            // Check if user is already registered
+            bool isRegistered = false;
+            BookingEntity userBooking = null;
 
-            ViewBag.StartTime = startTime;
-            ViewBag.CoursePlans = coursePlans;
+            if (User.UserID > 0)
+            {
+                isRegistered = BookingService.IsUserRegisteredForSchedule(id, User.UserID);
+                if (isRegistered)
+                {
+                    var bookings = BookingService.GetBookingsByCourseSchedule(id);
+                    userBooking = bookings.FirstOrDefault(b => b.UserID == User.UserID && !b.IsCancelled);
+                }
+            }
 
-            return View();
+            ViewBag.IsRegistered = isRegistered;
+            ViewBag.UserBooking = userBooking;
+            ViewBag.CanRegister = !isRegistered && schedule.RemainingSeats > 0 && schedule.StartTime > DateTime.UtcNow;
+
+            return View(schedule);
         }
 
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
-        public ActionResult Create(BookingEntity booking, string[] participantNames, string[] participantEmails)
+        [Authorize]
+        public ActionResult Register(int id, string notes)
         {
-            if (!ModelState.IsValid)
+            if (User.UserID <= 0)
             {
-                bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-                ViewBag.CoursePlans = BookingService.FindCoursePlans(isAdmin);
-                ViewBag.StartTime = booking.StartTime;
-                return View(booking);
+                return new HttpUnauthorizedResult();
             }
 
             try
             {
-                // Set the creator ID and created date
-                booking.CreatedByUserID = DotNetNuke.Entities.Users.UserController.Instance.GetCurrentUserInfo().UserID;
-                booking.CreatedDate = DateTime.UtcNow;
-                booking.IsCancelled = false;
-                booking.PaymentStatus = "Pending";
-
-                // Create the booking
-                var newBooking = BookingService.CreateBooking(booking);
-
-                // Add participants
-                if (participantNames != null && participantEmails != null)
+                var schedule = BookingService.GetCourseScheduleById(id);
+                if (schedule == null)
                 {
-                    for (int i = 0; i < participantNames.Length; i++)
-                    {
-                        if (!string.IsNullOrEmpty(participantNames[i]) && !string.IsNullOrEmpty(participantEmails[i]))
-                        {
-                            var participant = new ParticipantEntity
-                            {
-                                ParticipantName = participantNames[i],
-                                Email = participantEmails[i],
-                                AddedByUserID = DotNetNuke.Entities.Users.UserController.Instance.GetCurrentUserInfo().UserID
-                            };
-
-                            BookingService.AddParticipantToBooking(newBooking.ID, participant);
-                        }
-                    }
+                    return HttpNotFound();
                 }
 
-                // Send confirmation emails
-                BookingService.SendBookingConfirmation(newBooking.ID);
+                // Create booking
+                var booking = BookingService.CreateBooking(id, User.UserID, notes);
 
-                return RedirectToAction("Detail", new { id = newBooking.ID });
+                // Send confirmation
+                BookingService.SendBookingConfirmation(booking.ID);
+
+                return RedirectToAction("Confirmation", new { id = booking.ID });
             }
             catch (Exception ex)
             {
                 ModelState.AddModelError("", "Error creating booking: " + ex.Message);
-                bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-                ViewBag.CoursePlans = BookingService.FindCoursePlans(isAdmin);
-                ViewBag.StartTime = booking.StartTime;
-                return View(booking);
+                return RedirectToAction("Details", new { id });
             }
         }
 
-        public ActionResult Detail(int id)
+        [Authorize]
+        public ActionResult Confirmation(int id)
         {
-            var booking = BookingService.FindBookingById(id);
+            var booking = BookingService.GetBookingById(id);
             if (booking == null)
             {
                 return HttpNotFound();
             }
 
             // Check authorization
-            bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-            bool isOwner = booking.CreatedByUserID == DotNetNuke.Entities.Users.UserController.Instance.GetCurrentUserInfo().UserID;
-
-            if (!isAdmin && !isOwner)
+            if (booking.UserID != User.UserID && !User.IsInRole("Administrators") && !User.IsSuperUser)
             {
                 return new HttpUnauthorizedResult();
             }
-
-            // Get participants
-            using (var ctx = DotNetNuke.Data.DataContext.Instance())
-            {
-                var participants = ctx.GetRepository<ParticipantEntity>()
-                    .Find("WHERE BookingID = @0", id).ToList();
-                ViewBag.Participants = participants;
-            }
-
-            ViewBag.IsAdmin = isAdmin;
-            ViewBag.CanCancel = !booking.IsCancelled && booking.StartTime > DateTime.UtcNow;
 
             return View(booking);
         }
 
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
+        [Authorize]
         public ActionResult Cancel(int id)
         {
-            var booking = BookingService.FindBookingById(id);
+            var booking = BookingService.GetBookingById(id);
             if (booking == null)
             {
                 return HttpNotFound();
             }
 
             // Check authorization
-            bool isAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
-            bool isOwner = booking.CreatedByUserID == DotNetNuke.Entities.Users.UserController.Instance.GetCurrentUserInfo().UserID;
-
-            if (!isAdmin && !isOwner)
+            if (booking.UserID != User.UserID && !User.IsInRole("Administrators") && !User.IsSuperUser)
             {
                 return new HttpUnauthorizedResult();
             }
 
-            if (BookingService.CancelBooking(id))
+            try
             {
-                return RedirectToAction("Detail", new { id = id });
+                if (BookingService.CancelBooking(id))
+                {
+                    return RedirectToAction("MyBookings");
+                }
+                else
+                {
+                    ModelState.AddModelError("", "Failed to cancel booking.");
+                    return RedirectToAction("Confirmation", new { id });
+                }
             }
-            else
+            catch (Exception ex)
             {
-                ModelState.AddModelError("", "Failed to cancel booking.");
-                return RedirectToAction("Detail", new { id = id });
+                ModelState.AddModelError("", "Error: " + ex.Message);
+                return RedirectToAction("Confirmation", new { id });
             }
+        }
+
+        [Authorize]
+        public ActionResult MyBookings()
+        {
+            var bookings = BookingService.GetBookingsByUser(User.UserID);
+            return View(bookings);
         }
     }
 }

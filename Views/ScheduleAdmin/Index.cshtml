@@ -1,0 +1,127 @@
+﻿@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+@using System.Linq
+@using CourseBooking.Models
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<IEnumerable<CourseScheduleEntity>>
+
+@{
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+}
+
+<div class="admin-course-schedules">
+    <h2>Tanfolyam időpontok kezelése</h2>
+
+    <div class="actions-bar">
+        <a href="@Url.Action("Create")" class="btn btn-primary">
+            <i class="fa fa-plus"></i> Új időpont létrehozása
+        </a>
+    </div>
+
+    <div class="schedules-table-container">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Tanfolyam</th>
+                    <th>Kategória</th>
+                    <th>Dátum</th>
+                    <th>Időpont</th>
+                    <th>Időtartam</th>
+                    <th>Foglalások</th>
+                    <th>Státusz</th>
+                    <th>Műveletek</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var schedule in Model.OrderBy(s => s.StartTime))
+                    {
+                        var localStartTime = schedule.StartTime.ToLocalTime();
+                        var localEndTime = schedule.EndTime.ToLocalTime();
+                        <tr class="@(!schedule.IsActive ? "inactive-row" : (schedule.StartTime < DateTime.UtcNow ? "past-row" : ""))">
+                            <td>@schedule.CoursePlan.Name</td>
+                            <td>@schedule.CoursePlan.CourseCategory</td>
+                            <td>@localStartTime.ToString("yyyy-MM-dd")</td>
+                            <td>@localStartTime.ToString("HH:mm") - @localEndTime.ToString("HH:mm")</td>
+                            <td>@schedule.CoursePlan.DurationHours óra</td>
+                            <td>@schedule.BookingCount / @schedule.AvailableSeats</td>
+                            <td>
+                                @if (!schedule.IsActive)
+                                {
+                                    <span class="badge badge-secondary">Inaktív</span>
+                                }
+                                else if (schedule.StartTime < DateTime.UtcNow)
+                                {
+                                    <span class="badge badge-secondary">Elmúlt</span>
+                                }
+                                else if (schedule.BookingCount >= schedule.AvailableSeats)
+                                {
+                                    <span class="badge badge-warning">Betelt</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-success">Aktív</span>
+                                }
+                            </td>
+                            <td class="actions-cell">
+                                <div class="btn-group">
+                                    <a href="@Url.Action("Edit", new { id = schedule.ID })" class="btn btn-sm btn-default">
+                                        <i class="fa fa-edit"></i> Szerkesztés
+                                    </a>
+                                    <a href="@Url.Action("Bookings", new { id = schedule.ID })" class="btn btn-sm btn-info">
+                                        <i class="fa fa-users"></i> Foglalások
+                                    </a>
+                                    @if (schedule.IsActive && schedule.StartTime > DateTime.UtcNow)
+                                    {
+                                        using (Html.BeginForm("Delete", "ScheduleAdmin", new { id = schedule.ID }, FormMethod.Post, new { @class = "d-inline", onsubmit = "return confirm('Biztosan törli ezt az időpontot?');" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fa fa-trash"></i> Törlés
+                                            </button>
+                                        }
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8" class="text-center">Nincsenek elérhető időpontok</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@{
+    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
+}
+
+<style>
+    .inactive-row {
+        background-color: #f8f9fa;
+        color: #6c757d;
+    }
+
+    .past-row {
+        background-color: #f8f9fa;
+    }
+
+    .actions-cell {
+        white-space: nowrap;
+    }
+
+    .actions-bar {
+        margin-bottom: 20px;
+    }
+
+    .d-inline {
+        display: inline-block;
+    }
+</style>

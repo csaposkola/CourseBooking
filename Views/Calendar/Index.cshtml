@@ -11,7 +11,7 @@
     DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
 }
 
-<div class="course-calendar">
+<div class="csaposkola-course-calendar">
     <div class="calendar-header">
         <h2>Tanfolyamnaptár</h2>
         <div class="calendar-controls">
@@ -42,6 +42,13 @@
                     }
                 </select>
                 <button type="button" id="jumpToDate" class="btn btn-primary">Go</button>
+
+                @if (Request.IsAuthenticated)
+                {
+                    <button type="button" id="viewMyBookings" class="btn btn-info">
+                        <i class="fa fa-list"></i> Foglalásaim
+                    </button>
+                }
             </div>
         </div>
     </div>
@@ -86,9 +93,10 @@
             initialYear: @ViewBag.CurrentYear,
             initialMonth: @ViewBag.CurrentMonth,
             isAdmin: @(ViewBag.IsAdmin ? "true" : "false"),
+            userId: @(Request.IsAuthenticated ? Dnn.User.UserID.ToString() : "0"),
             apiUrl: sf.getServiceRoot('CourseBooking') + 'CourseApi/',
-            createUrl: '@Url.Action("Create", "Calendar")',
-            detailUrl: '@Url.Action("Detail", "Calendar")',
+            detailsUrl: '@Url.Action("Details", "Calendar")',
+            myBookingsUrl: '@Url.Action("MyBookings", "Calendar")',
             antiForgeryToken: sf.getAntiForgeryValue()
         });
 
