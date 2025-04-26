@@ -75,13 +75,12 @@
                                     </a>
                                     @if (schedule.IsActive && schedule.StartTime > DateTime.UtcNow)
                                     {
-                                        using (Html.BeginForm("Delete", "ScheduleAdmin", new { id = schedule.ID }, FormMethod.Post, new { @class = "d-inline", onsubmit = "return confirm('Biztosan törli ezt az időpontot?');" }))
-                                        {
+                                        <form action="@Url.Action("Delete", "ScheduleAdmin", new { id = schedule.ID })" method="post" class="d-inline" onsubmit="return confirm('Biztosan törli ezt az időpontot?');">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-sm btn-danger">
                                                 <i class="fa fa-trash"></i> Törlés
                                             </button>
-                                        }
+                                        </form>
                                     }
                                 </div>
                             </td>

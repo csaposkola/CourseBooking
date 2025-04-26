@@ -1,7 +1,7 @@
 ﻿@using System.Linq
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
-@using DotNetNuke.Web.Client
+@using DotNetNuke.Web.Client.ClientResourceManagement
 @using DotNetNuke.Framework.JavaScriptLibraries
 @using CourseBooking.Models
 @inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<BookingEntity>
@@ -87,13 +87,12 @@
     <div class="confirmation-actions">
         @if (!Model.IsCancelled && Model.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
         {
-            using (Html.BeginForm("Cancel", "Calendar", new { id = Model.ID }, FormMethod.Post, new { @class = "d-inline cancel-form", onsubmit = "return confirm('Biztosan lemondja a foglalást?');" }))
-            {
+            <form action="@Url.Action("Cancel", "Calendar", new { id = Model.ID })" method="post" class="d-inline cancel-form" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-danger">
                     <i class="fa fa-times"></i> Foglalás lemondása
                 </button>
-            }
+            </form>
         }
 
         <a href="@Url.Action("MyBookings")" class="btn btn-primary">

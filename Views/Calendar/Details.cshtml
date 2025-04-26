@@ -148,8 +148,7 @@
             <div class="registration-section">
                 <h3>Foglalás</h3>
 
-                @using (Html.BeginForm("Register", "Calendar", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
-                {
+                <form action="@Url.Action("Register", "Calendar")" method="post" class="form-horizontal" role="form">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.ID" />
 
@@ -165,7 +164,7 @@
                             <button type="submit" class="btn btn-primary">Foglalás véglegesítése</button>
                         </div>
                     </div>
-                }
+                </form>
             </div>
         }
         else if (!Request.IsAuthenticated)
@@ -197,11 +196,10 @@
     <div class="booking-actions">
         @if (isRegistered && userBooking != null && !userBooking.IsCancelled && Model.StartTime > DateTime.UtcNow.AddHours(24))
         {
-            using (Html.BeginForm("Cancel", "Calendar", new { id = userBooking.ID }, FormMethod.Post, new { @class = "cancel-form", onsubmit = "return confirm('Biztosan lemondja a foglalást?');" }))
-            {
+            <form action="@Url.Action("Cancel", "Calendar", new { id = userBooking.ID })" method="post" class="cancel-form" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-danger">Foglalás lemondása</button>
-            }
+            </form>
         }
 
         <a href="@Url.Action("Index")" class="btn btn-default">Vissza a naptárhoz</a>

@@ -216,7 +216,7 @@
     <Content Include="Views\Item\Edit.cshtml" />
     <Content Include="Views\Settings\Settings.cshtml" />
     <Content Include="Views\Calendar\Index.cshtml" />
-    <Content Include="Views\Calendar\Detail.cshtml" />
+    <Content Include="Views\Calendar\Details.cshtml" />
     <Content Include="Views\Calendar\Create.cshtml" />
     <Content Include="Views\ScheduleAdmin\Index.cshtml" />
     <Content Include="Views\ScheduleAdmin\Create.cshtml" />
