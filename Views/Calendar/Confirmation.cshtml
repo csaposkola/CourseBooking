@@ -8,6 +8,8 @@
 
 @{
     DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
 
     var localStartTime = Model.CourseSchedule.StartTime.ToLocalTime();
     var localEndTime = Model.CourseSchedule.EndTime.ToLocalTime();
@@ -87,7 +89,9 @@
     <div class="confirmation-actions">
         @if (!Model.IsCancelled && Model.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
         {
-            <form action="@Url.Action("Cancel", "Calendar", new { id = Model.ID })" method="post" class="d-inline cancel-form" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
+            <form action="@Url.Action("Cancel", "Calendar", new { id = Model.ID })" method="post" 
+                  class="d-inline cancel-form" data-ajax="true" data-success-callback="onCancelSuccess" 
+                  onsubmit="return confirm('Biztosan lemondja a foglalást?');">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-danger">
                     <i class="fa fa-times"></i> Foglalás lemondása
@@ -95,13 +99,18 @@
             </form>
         }
 
-        <a href="@Url.Action("MyBookings")" class="btn btn-primary">
+        <a href="@Url.Action("MyBookings")" class="btn btn-primary view-my-bookings" data-modal="true" data-modal-title="Foglalásaim">
             <i class="fa fa-list"></i> Foglalásaim megtekintése
         </a>
 
-        <a href="@Url.Action("Index")" class="btn btn-default">
+        <a href="@Url.Action("Index")" class="btn btn-default return-to-calendar">
             <i class="fa fa-calendar"></i> Vissza a naptárhoz
         </a>
+        
+        @if (Request.IsAjaxRequest())
+        {
+            <button type="button" class="btn btn-default modal-close">Bezárás</button>
+        }
     </div>
 </div>
 
@@ -109,47 +118,9 @@
     ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
 }
 
-<style>
-    .booking-confirmation {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-
-    .booking-details {
-        margin: 20px 0;
-    }
-
-    .confirmation-actions {
-        margin-top: 20px;
-        text-align: center;
-    }
-
-        .confirmation-actions .btn {
-            margin: 0 5px;
-        }
-
-    .voucher-container {
-        display: flex;
-        align-items: center;
-    }
-
-    #voucherCode {
-        font-family: monospace;
-        font-size: 14px;
-        background-color: #f0f0f0;
-        padding: 3px 8px;
-        border-radius: 3px;
-        margin-right: 5px;
-    }
-
-    .d-inline {
-        display: inline-block;
-    }
-</style>
-
 <script type="text/javascript">
     $(document).ready(function () {
-        // Copy voucher code
+        // Copy voucher code button
         $("#copyVoucher").click(function () {
             var voucherText = $("#voucherCode").text();
 
@@ -171,5 +142,73 @@
                 $btn.html(originalHtml);
             }, 1500);
         });
+        
+        // View my bookings button
+        $(".view-my-bookings").on("click", function(e) {
+            e.preventDefault();
+            var url = $(this).attr("href");
+            var title = $(this).data("modal-title") || "Foglalásaim";
+            
+            // Check if we're in a modal already
+            if (window.parent && window.parent.CourseBookingAjax) {
+                window.parent.CourseBookingAjax.openModalUrl(url, title, {
+                    width: 900,
+                    height: 600
+                });
+            } else if (window.CourseBookingAjax) {
+                CourseBookingAjax.openModalUrl(url, title, {
+                    width: 900,
+                    height: 600
+                });
+            } else {
+                window.location.href = url; // Fallback to direct navigation
+            }
+        });
+        
+        // Return to calendar button
+        $(".return-to-calendar").on("click", function(e) {
+            e.preventDefault();
+            
+            // If in modal, close it
+            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
+                window.parent.$('#courseBookingModal').dialog('close');
+                // Refresh calendar data
+                if (window.parent.courseCalendar) {
+                    window.parent.courseCalendar.loadCalendarData();
+                }
+            } else {
+                window.location.href = '@Url.Action("Index")';
+            }
+        });
+        
+        // Modal close button
+        $(".modal-close").on("click", function() {
+            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
+                window.parent.$('#courseBookingModal').dialog('close');
+                // Refresh calendar data in parent window
+                if (window.parent.courseCalendar) {
+                    window.parent.courseCalendar.loadCalendarData();
+                }
+            } else if ($('#courseBookingModal').dialog('instance')) {
+                $('#courseBookingModal').dialog('close');
+            }
+        });
     });
+    
+    // Cancel success callback function
+    function onCancelSuccess(response) {
+        alert('A foglalást sikeresen lemondta.');
+        
+        // Close modal if in one
+        if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
+            window.parent.$('#courseBookingModal').dialog('close');
+            // Refresh calendar data
+            if (window.parent.courseCalendar) {
+                window.parent.courseCalendar.loadCalendarData();
+            }
+        } else {
+            // Navigate to my bookings
+            window.location.href = '@Url.Action("MyBookings")';
+        }
+    }
 </script>

@@ -178,7 +178,7 @@
                 data: { bookingId: bookingId },
                 beforeSend: function(xhr) {
                     xhr.setRequestHeader("ModuleId", @Dnn.ModuleContext.ModuleId);
-                    xhr.setRequestHeader("TabId", @Dnn.Tab.TabID);
+                    xhr.setRequestHeader("TabId", @Dnn.ModuleContext.TabId);
                     xhr.setRequestHeader('RequestVerificationToken', sf.getAntiForgeryValue());
                 },
                 success: function(result) {
@@ -204,7 +204,7 @@
                 },
                 beforeSend: function(xhr) {
                     xhr.setRequestHeader("ModuleId", @Dnn.ModuleContext.ModuleId);
-                    xhr.setRequestHeader("TabId", @Dnn.Tab.TabID);
+                    xhr.setRequestHeader("TabId", @Dnn.ModuleContext.TabId);
                     xhr.setRequestHeader('RequestVerificationToken', sf.getAntiForgeryValue());
                 },
                 success: function(result) {
@@ -231,7 +231,7 @@
                 },
                 beforeSend: function(xhr) {
                     xhr.setRequestHeader("ModuleId", @Dnn.ModuleContext.ModuleId);
-                    xhr.setRequestHeader("TabId", @Dnn.Tab.TabID);
+                    xhr.setRequestHeader("TabId", @Dnn.ModuleContext.TabId);
                     xhr.setRequestHeader('RequestVerificationToken', sf.getAntiForgeryValue());
                 },
                 success: function(result) {

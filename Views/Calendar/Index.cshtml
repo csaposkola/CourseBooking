@@ -83,12 +83,21 @@
 @{
     ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
     ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/Scripts/calendar.js");
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/Scripts/ajaxHandler.js");
 }
 
 <script type="text/javascript">
     $(document).ready(function () {
         var sf = $.ServicesFramework(@moduleContext.ModuleId);
-        var calendar = new CourseCalendar({
+
+        // Initialize Ajax Handler
+        CourseBookingAjax.initialize({
+            moduleId: @moduleContext.ModuleId,
+            tabId: @Dnn.ActiveModule.TabID
+        });
+        
+        // Initialize Calendar
+        window.courseCalendar = new CourseCalendar({
             moduleId: @moduleContext.ModuleId,
             initialYear: @ViewBag.CurrentYear,
             initialMonth: @ViewBag.CurrentMonth,
@@ -100,6 +109,30 @@
             antiForgeryToken: sf.getAntiForgeryValue()
         });
 
-        calendar.initialize();
+        window.courseCalendar.initialize();
+        
+        // Initialize modal handlers for the page
+        CourseBookingAjax.initializeFormHandlers(document);
+        
+        // Update calendar.js to use modals for schedule details
+        $(document).on('click', '.time-slot', function(e) {
+            e.preventDefault();
+            var url = $(this).attr('href');
+            var title = $(this).attr('title') || 'Tanfolyam részletek';
+            
+            CourseBookingAjax.openModalUrl(url, title, {
+                width: 800,
+                height: 600
+            });
+        });
+        
+        // Handle "My Bookings" button click
+        $('#viewMyBookings').click(function(e) {
+            e.preventDefault();
+            CourseBookingAjax.openModalUrl('@Url.Action("MyBookings", "Calendar")', 'Foglalásaim', {
+                width: 900,
+                height: 600
+            });
+        });
     });
 </script>

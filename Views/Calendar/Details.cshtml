@@ -148,7 +148,7 @@
             <div class="registration-section">
                 <h3>Foglalás</h3>
 
-                <form action="@Url.Action("Register", "Calendar")" method="post" class="form-horizontal" role="form">
+                <form action="@Url.Action("Register", "Calendar")" method="post" class="form-horizontal" role="form" data-ajax="true" data-success-callback="onBookingSuccess">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.ID" />
 
@@ -196,13 +196,13 @@
     <div class="booking-actions">
         @if (isRegistered && userBooking != null && !userBooking.IsCancelled && Model.StartTime > DateTime.UtcNow.AddHours(24))
         {
-            <form action="@Url.Action("Cancel", "Calendar", new { id = userBooking.ID })" method="post" class="cancel-form" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
+            <form action="@Url.Action("Cancel", "Calendar", new { id = userBooking.ID })" method="post" class="cancel-form" data-ajax="true" data-success-callback="onCancelSuccess" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-danger">Foglalás lemondása</button>
             </form>
         }
 
-        <a href="@Url.Action("Index")" class="btn btn-default">Vissza a naptárhoz</a>
+        <button type="button" class="btn btn-default modal-close">Bezárás</button>
     </div>
 </div>
 
@@ -234,5 +234,40 @@
                 $btn.html(originalHtml);
             }, 1500);
         });
+
+        // Close modal button
+        $(".modal-close").click(function() {
+            if (window.parent && window.parent.$('#courseBookingModal').length) {
+                window.parent.$('#courseBookingModal').dialog('close');
+            } else if ($('#courseBookingModal').length) {
+                $('#courseBookingModal').dialog('close');
+            }
+        });
     });
+
+    // Booking success callback
+    function onBookingSuccess(response) {
+        // Open the confirmation in the same modal
+        if (window.parent && window.parent.CourseBookingAjax) {
+            window.parent.CourseBookingAjax.openModalUrl('@Url.Action("Confirmation", "Calendar")?id=' + response.ID, 'Foglalás visszaigazolása', {
+                width: 800,
+                height: 600
+            });
+        } else {
+            window.location.href = '@Url.Action("Confirmation", "Calendar")?id=' + response.ID;
+        }
+    }
+
+    // Cancel success callback
+    function onCancelSuccess(response) {
+        // Alert the user and close the modal
+        alert('A foglalást sikeresen lemondta.');
+        if (window.parent && window.parent.$('#courseBookingModal').length) {
+            window.parent.$('#courseBookingModal').dialog('close');
+            // Refresh calendar data
+            if (window.parent.courseCalendar) {
+                window.parent.courseCalendar.loadCalendarData();
+            }
+        }
+    }
 </script>

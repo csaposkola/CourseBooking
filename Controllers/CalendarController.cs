@@ -70,6 +70,13 @@ namespace CourseBooking.Controllers
             ViewBag.UserBooking = userBooking;
             ViewBag.CanRegister = !isRegistered && schedule.RemainingSeats > 0 && schedule.StartTime > DateTime.UtcNow;
 
+            // Handle AJAX requests
+            if (Request.IsAjaxRequest())
+            {
+                // For AJAX requests, return only the partial view content
+                return PartialView(schedule);
+            }
+
             return View(schedule);
         }
 
@@ -97,11 +104,23 @@ namespace CourseBooking.Controllers
                 // Send confirmation
                 BookingService.SendBookingConfirmation(booking.ID);
 
+                // For AJAX requests, return JSON result
+                if (Request.IsAjaxRequest())
+                {
+                    return Json(booking);
+                }
+
                 return RedirectToAction("Confirmation", new { id = booking.ID });
             }
             catch (Exception ex)
             {
                 ModelState.AddModelError("", "Error creating booking: " + ex.Message);
+                
+                if (Request.IsAjaxRequest())
+                {
+                    return Json(new { success = false, message = ex.Message });
+                }
+                
                 return RedirectToAction("Details", new { id });
             }
         }
@@ -119,6 +138,12 @@ namespace CourseBooking.Controllers
             if (booking.UserID != User.UserID && !User.IsInRole("Administrators") && !User.IsSuperUser)
             {
                 return new HttpUnauthorizedResult();
+            }
+
+            // Handle AJAX requests
+            if (Request.IsAjaxRequest())
+            {
+                return PartialView(booking);
             }
 
             return View(booking);
@@ -145,16 +170,28 @@ namespace CourseBooking.Controllers
             {
                 if (BookingService.CancelBooking(id))
                 {
+                    if (Request.IsAjaxRequest())
+                    {
+                        return Json(new { success = true, message = "Booking cancelled successfully" });
+                    }
                     return RedirectToAction("MyBookings");
                 }
                 else
                 {
+                    if (Request.IsAjaxRequest())
+                    {
+                        return Json(new { success = false, message = "Failed to cancel booking" });
+                    }
                     ModelState.AddModelError("", "Failed to cancel booking.");
                     return RedirectToAction("Confirmation", new { id });
                 }
             }
             catch (Exception ex)
             {
+                if (Request.IsAjaxRequest())
+                {
+                    return Json(new { success = false, message = ex.Message });
+                }
                 ModelState.AddModelError("", "Error: " + ex.Message);
                 return RedirectToAction("Confirmation", new { id });
             }
@@ -164,6 +201,13 @@ namespace CourseBooking.Controllers
         public ActionResult MyBookings()
         {
             var bookings = BookingService.GetBookingsByUser(User.UserID);
+            
+            // Handle AJAX requests
+            if (Request.IsAjaxRequest())
+            {
+                return PartialView(bookings);
+            }
+            
             return View(bookings);
         }
     }

@@ -9,6 +9,7 @@
 @{
     DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
     DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
 
     var hasUpcomingBookings = Model.Any(b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow);
     var hasPastBookings = Model.Any(b => b.CourseSchedule.StartTime <= DateTime.UtcNow);
@@ -20,7 +21,7 @@
     @if (!Model.Any())
     {
         <div class="alert alert-info">
-            <p>Önnek még nincs foglalása. <a href="@Url.Action("Index")">Nézze meg a tanfolyam naptárat</a> új foglalás létrehozásához.</p>
+            <p>Önnek még nincs foglalása. <a href="@Url.Action("Index")" class="return-to-calendar">Nézze meg a tanfolyam naptárat</a> új foglalás létrehozásához.</p>
         </div>
     }
     else
@@ -75,14 +76,16 @@
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" class="btn btn-sm btn-default">
+                                        <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" class="btn btn-sm btn-default open-modal" 
+                                           data-modal="true" data-modal-title="@booking.CourseSchedule.CoursePlan.Name részletei">
                                             <i class="fa fa-search"></i> Részletek
                                         </a>
 
                                         @if (!booking.IsCancelled && booking.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
                                         {
                                             <form action="@Url.Action("Cancel", "Calendar", new { id = booking.ID })" method="post" 
-                                                  class="d-inline cancel-form" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
+                                                  class="d-inline cancel-form" data-ajax="true" data-success-callback="onCancelSuccess" 
+                                                  onsubmit="return confirm('Biztosan lemondja a foglalást?');">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-sm btn-danger">
                                                     <i class="fa fa-times"></i> Lemondás
@@ -147,7 +150,9 @@
                                     }
                                 </td>
                                 <td>
-                                    <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" class="btn btn-sm btn-default">
+                                    <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" 
+                                       class="btn btn-sm btn-default open-modal" data-modal="true" 
+                                       data-modal-title="@booking.CourseSchedule.CoursePlan.Name részletei">
                                         <i class="fa fa-search"></i> Részletek
                                     </a>
                                 </td>
@@ -160,12 +165,71 @@
     }
 
     <div class="booking-actions">
-        <a href="@Url.Action("Index")" class="btn btn-default">
+        <button type="button" class="btn btn-default return-to-calendar">
             <i class="fa fa-calendar"></i> Vissza a naptárhoz
-        </a>
+        </button>
+        
+        @if (Request.IsAjaxRequest())
+        {
+            <button type="button" class="btn btn-default modal-close">Bezárás</button>
+        }
     </div>
 </div>
 
 @{
     ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
 }
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        // Initialize modal handling for links inside this view
+        $(".open-modal").on("click", function(e) {
+            e.preventDefault();
+            var url = $(this).attr("href");
+            var title = $(this).data("modal-title") || "Részletek";
+            
+            // Check if we're in a modal already
+            if (window.parent && window.parent.CourseBookingAjax) {
+                window.parent.CourseBookingAjax.openModalUrl(url, title);
+            } else if (window.CourseBookingAjax) {
+                CourseBookingAjax.openModalUrl(url, title);
+            } else {
+                window.location.href = url; // Fallback to direct navigation
+            }
+        });
+        
+        // Handle return to calendar
+        $(".return-to-calendar").on("click", function(e) {
+            e.preventDefault();
+            
+            // If in modal, close it
+            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
+                window.parent.$('#courseBookingModal').dialog('close');
+            } else {
+                window.location.href = '@Url.Action("Index")';
+            }
+        });
+        
+        // Modal close button
+        $(".modal-close").on("click", function() {
+            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
+                window.parent.$('#courseBookingModal').dialog('close');
+            } else if ($('#courseBookingModal').dialog('instance')) {
+                $('#courseBookingModal').dialog('close');
+            }
+        });
+    });
+    
+    // Cancel success callback function
+    function onCancelSuccess(response) {
+        alert('A foglalást sikeresen lemondta.');
+        
+        // Refresh the current page to show updated booking status
+        window.location.reload();
+        
+        // If in parent window, refresh calendar data
+        if (window.parent && window.parent.courseCalendar) {
+            window.parent.courseCalendar.loadCalendarData();
+        }
+    }
+</script>

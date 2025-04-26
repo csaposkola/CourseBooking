@@ -1,4 +1,6 @@
-﻿var CourseCalendar = function (options) {
+﻿// calendar.js - Calendar functionality for CourseBooking module
+
+var CourseCalendar = function (options) {
     var self = this;
 
     // Ensure options exist and provide defaults
@@ -41,16 +43,14 @@
         $('#calendarGrid').html('<tr><td colspan="7" class="calendar-loading"><div class="text-center p-3"><i class="fa fa-spinner fa-spin fa-2x"></i> Loading course schedules...</div></td></tr>');
 
         $.ajax({
-            url: self.apiUrl + 'GetCourseSchedules', // Ensure apiUrl has trailing slash
-            // Pass parameters including moduleId via the 'data' object for GET requests
+            url: self.apiUrl + 'GetCourseSchedules',
             data: {
                 year: self.currentYear,
                 month: self.currentMonth,
-                moduleId: self.moduleId // <<< CHANGE: Pass moduleId in query string
+                moduleId: self.moduleId
             },
             type: 'GET',
-            dataType: 'json', // Expect JSON response
-            // REMOVED: beforeSend setting the header is no longer needed
+            dataType: 'json',
             success: function (data) {
                 self.renderCalendar(data);
             },
@@ -83,8 +83,8 @@
         var firstDayOfMonth = new Date(self.currentYear, self.currentMonth - 1, 1);
         var startingDayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
-        // Adjust startingDayOfWeek: If your week starts on Monday (common in Europe)
-        // startingDayOfWeek = (startingDayOfWeek === 0) ? 6 : startingDayOfWeek - 1; // 0=Mon, 1=Tue, ..., 6=Sun
+        // Adjust startingDayOfWeek for Monday as first day of week (European style)
+        startingDayOfWeek = (startingDayOfWeek === 0) ? 6 : startingDayOfWeek - 1; // 0=Mon, 1=Tue, ..., 6=Sun
 
         var daysInMonth = new Date(self.currentYear, self.currentMonth, 0).getDate();
         var daysInPrevMonth = new Date(self.currentYear, self.currentMonth - 1, 0).getDate();
@@ -173,12 +173,12 @@
                                     slotClass += ' available';
                                 }
 
-                                // TODO: Implement a real check for 'my-booking' if needed, requires booking data access
-                                // if (self.userId > 0 && self.isUserRegistered(schedule.ID, self.userId)) {
-                                //    slotClass += ' my-booking';
-                                // }
+                                // Check if the user has registered for this course
+                                if (self.userId > 0 && schedule.IsUserRegistered) {
+                                    slotClass += ' my-booking';
+                                }
 
-                                rowHtml += '<a href="' + self.detailsUrl + '?id=' + schedule.ID + '" class="' + slotClass + '" title="' + schedule.CoursePlan.Name + '">';
+                                rowHtml += '<a href="' + self.detailsUrl + '?id=' + schedule.ID + '" class="' + slotClass + '" data-modal="true" data-modal-title="' + (schedule.CoursePlan ? schedule.CoursePlan.Name : 'Course Details') + '">';
                                 rowHtml += '<span class="time">' + formattedTime + '</span> - ';
                                 // Ensure CoursePlan and Name exist
                                 rowHtml += (schedule.CoursePlan ? schedule.CoursePlan.Name : 'Unknown Course') + ' (' + remainingSeats + '/' + schedule.AvailableSeats + ')';
@@ -204,28 +204,35 @@
         } // End row loop (i)
 
         $('#calendarGrid').html(html);
-    };
 
+        // Initialize AJAX/modal handlers for the slots
+        if (window.CourseBookingAjax) {
+            CourseBookingAjax.initializeFormHandlers($('#calendarGrid'));
+        }
+    };
 
     // --- Event Handlers ---
     self.setupEventHandlers = function () {
-        // Use delegated events for potentially dynamic elements if needed, but direct binding is fine here
+        // Previous month button
         $('#prevMonth').off('click').on('click', function (e) {
             e.preventDefault();
             self.navigateMonth(-1);
         });
 
+        // Next month button
         $('#nextMonth').off('click').on('click', function (e) {
             e.preventDefault();
             self.navigateMonth(1);
         });
 
+        // Jump to date button
         $('#jumpToDate').off('click').on('click', function (e) {
             e.preventDefault();
             var selectedMonth = parseInt($('#jumpToMonth').val());
             var selectedYear = parseInt($('#jumpToYear').val());
             // Basic validation
-            if (!isNaN(selectedMonth) && selectedMonth >= 1 && selectedMonth <= 12 && !isNaN(selectedYear) && selectedYear > 1900 && selectedYear < 2100) {
+            if (!isNaN(selectedMonth) && selectedMonth >= 1 && selectedMonth <= 12 &&
+                !isNaN(selectedYear) && selectedYear > 1900 && selectedYear < 2100) {
                 self.currentMonth = selectedMonth;
                 self.currentYear = selectedYear;
                 self.updateCalendarHeader();
@@ -239,7 +246,15 @@
         if (self.myBookingsUrl && self.myBookingsUrl !== '#') {
             $('#viewMyBookings').off('click').on('click', function (e) {
                 e.preventDefault();
-                window.location.href = self.myBookingsUrl;
+
+                if (window.CourseBookingAjax) {
+                    CourseBookingAjax.openModalUrl(self.myBookingsUrl, 'Foglalásaim', {
+                        width: 900,
+                        height: 600
+                    });
+                } else {
+                    window.location.href = self.myBookingsUrl;
+                }
             });
         } else {
             $('#viewMyBookings').hide(); // Hide if no valid URL
@@ -267,7 +282,7 @@
         // Consider using locale-aware date formatting if supporting multiple languages
         var months = ['January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'];
-        // Hungarian Months (as in original code)
+        // Hungarian Months
         // var months = ['Január', 'Február', 'Március', 'Április', 'Május', 'Június',
         //    'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'];
         return months[monthNum - 1] || 'Invalid Month';

@@ -56,7 +56,7 @@
 									<moduleControl>
 										<controlKey>Details</controlKey>
 										<controlSrc>CourseBooking.Controllers/Calendar/Details.mvc</controlSrc>
-										<supportsPartialRendering>False</supportsPartialRendering>
+										<supportsPartialRendering>True</supportsPartialRendering>
 										<controlTitle>Course Details</controlTitle>
 										<controlType>View</controlType>
 										<iconFile />
@@ -67,17 +67,18 @@
 									<moduleControl>
 										<controlKey>MyBookings</controlKey>
 										<controlSrc>CourseBooking.Controllers/Calendar/MyBookings.mvc</controlSrc>
-										<supportsPartialRendering>False</supportsPartialRendering>
+										<supportsPartialRendering>True</supportsPartialRendering>
 										<controlTitle>My Bookings</controlTitle>
 										<controlType>View</controlType>
 										<iconFile />
 										<helpUrl />
 										<viewOrder>0</viewOrder>
+										<supportsPopUps>True</supportsPopUps>
 									</moduleControl>
 									<moduleControl>
 										<controlKey>Confirmation</controlKey>
 										<controlSrc>CourseBooking.Controllers/Calendar/Confirmation.mvc</controlSrc>
-										<supportsPartialRendering>False</supportsPartialRendering>
+										<supportsPartialRendering>True</supportsPartialRendering>
 										<controlTitle>Booking Confirmation</controlTitle>
 										<controlType>View</controlType>
 										<iconFile />
@@ -108,32 +109,35 @@
 									<moduleControl>
 										<controlKey>ScheduleCreate</controlKey>
 										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Create.mvc</controlSrc>
-										<supportsPartialRendering>False</supportsPartialRendering>
+										<supportsPartialRendering>True</supportsPartialRendering>
 										<controlTitle>Create Schedule</controlTitle>
 										<controlType>Admin</controlType>
 										<iconFile />
 										<helpUrl />
 										<viewOrder>0</viewOrder>
+										<supportsPopUps>True</supportsPopUps>
 									</moduleControl>
 									<moduleControl>
 										<controlKey>ScheduleEdit</controlKey>
 										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Edit.mvc</controlSrc>
-										<supportsPartialRendering>False</supportsPartialRendering>
+										<supportsPartialRendering>True</supportsPartialRendering>
 										<controlTitle>Edit Schedule</controlTitle>
 										<controlType>Admin</controlType>
 										<iconFile />
 										<helpUrl />
 										<viewOrder>0</viewOrder>
+										<supportsPopUps>True</supportsPopUps>
 									</moduleControl>
 									<moduleControl>
 										<controlKey>ScheduleBookings</controlKey>
 										<controlSrc>CourseBooking.Controllers/ScheduleAdmin/Bookings.mvc</controlSrc>
-										<supportsPartialRendering>False</supportsPartialRendering>
+										<supportsPartialRendering>True</supportsPartialRendering>
 										<controlTitle>Schedule Bookings</controlTitle>
 										<controlType>Admin</controlType>
 										<iconFile />
 										<helpUrl />
 										<viewOrder>0</viewOrder>
+										<supportsPopUps>True</supportsPopUps>
 									</moduleControl>
 								</moduleControls>
 							</moduleDefinition>
