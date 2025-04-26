@@ -1,17 +1,17 @@
 using CourseBooking.Models;
 using CourseBooking.Services;
 using DotNetNuke.Services.Exceptions;
+using DotNetNuke.Web.Api;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Web.Http;
 
 namespace CourseBooking.Controllers.Api
 {
-    [DotNetNuke.Web.Api.DnnAuthorizeAttribute]
-    [DotNetNuke.Web.Api.ValidateAntiForgeryTokenAttribute]
-    public class CourseApiController : DotNetNuke.Web.Api.DnnApiController
+    public class CourseApiController : DnnApiController
     {
         private IBookingService _bookingService;
 
@@ -19,9 +19,15 @@ namespace CourseBooking.Controllers.Api
         {
             get
             {
-                if (_bookingService == null && ActiveModule != null)
+                if (_bookingService == null)
                 {
-                    _bookingService = new BookingService(ActiveModule.ModuleID, PortalSettings.PortalId);
+                    int moduleId = -1;
+                    if (ActiveModule != null)
+                    {
+                        moduleId = ActiveModule.ModuleID;
+                    }
+            
+                    _bookingService = new BookingService(moduleId, PortalSettings.PortalId);
                 }
                 return _bookingService;
             }
@@ -29,8 +35,8 @@ namespace CourseBooking.Controllers.Api
 
         #region Course Plans
 
-        [System.Web.Http.HttpGet]
-        [System.Web.Http.AllowAnonymous]
+        [HttpGet]
+        [AllowAnonymous]
         public HttpResponseMessage GetCoursePlans()
         {
             try
@@ -50,8 +56,8 @@ namespace CourseBooking.Controllers.Api
 
         #region Course Schedules
 
-        [System.Web.Http.HttpGet]
-        [System.Web.Http.AllowAnonymous]
+        [HttpGet]
+        [AllowAnonymous]
         public HttpResponseMessage GetCourseSchedules(int year, int month)
         {
             try
@@ -61,14 +67,21 @@ namespace CourseBooking.Controllers.Api
                 var endDate = startDate.AddMonths(1).AddDays(-1);
 
                 bool isAdmin = UserInfo.IsInRole("Administrators") || UserInfo.IsSuperUser;
-                var schedules = BookingService.GetCourseSchedules(startDate, endDate, isAdmin);
-
-                // Add user's booking status if authenticated
-                if (UserInfo.UserID > 0)
+        
+                List<CourseScheduleEntity> schedules = new List<CourseScheduleEntity>();
+        
+                // Safety check to prevent NullReferenceException
+                if (BookingService != null)
                 {
-                    foreach (var schedule in schedules)
+                    schedules = BookingService.GetCourseSchedules(startDate, endDate, isAdmin).ToList();
+
+                    // Add user's booking status if authenticated
+                    if (UserInfo.UserID > 0)
                     {
-                        schedule.BookingCount = BookingService.GetBookingCountForSchedule(schedule.ID);
+                        foreach (var schedule in schedules)
+                        {
+                            schedule.BookingCount = BookingService.GetBookingCountForSchedule(schedule.ID);
+                        }
                     }
                 }
 
@@ -81,8 +94,8 @@ namespace CourseBooking.Controllers.Api
             }
         }
 
-        [System.Web.Http.HttpGet]
-        [System.Web.Http.AllowAnonymous]
+        [HttpGet]
+        [AllowAnonymous]
         public HttpResponseMessage GetCourseSchedule(int id)
         {
             try
@@ -121,7 +134,8 @@ namespace CourseBooking.Controllers.Api
 
         #region Bookings
 
-        [System.Web.Http.HttpGet]
+        [HttpGet]
+        [DnnAuthorize]
         public HttpResponseMessage GetUserBookings()
         {
             try
@@ -141,8 +155,9 @@ namespace CourseBooking.Controllers.Api
             }
         }
 
-        [System.Web.Http.HttpPost]
-        [DotNetNuke.Web.Api.ValidateAntiForgeryTokenAttribute]
+        [HttpPost]
+        [DnnAuthorize]
+        [ValidateAntiForgeryToken]
         public HttpResponseMessage RegisterCourse(int scheduleId, string notes = null)
         {
             try
@@ -167,8 +182,9 @@ namespace CourseBooking.Controllers.Api
             }
         }
 
-        [System.Web.Http.HttpPost]
-        [DotNetNuke.Web.Api.ValidateAntiForgeryTokenAttribute]
+        [HttpPost]
+        [DnnAuthorize]
+        [ValidateAntiForgeryToken]
         public HttpResponseMessage CancelBooking(int bookingId)
         {
             try
@@ -208,9 +224,8 @@ namespace CourseBooking.Controllers.Api
 
         #region Admin Operations
 
-        [System.Web.Http.HttpGet]
-        [DotNetNuke.Web.Api.ValidateAntiForgeryTokenAttribute]
-        [DotNetNuke.Web.Api.DnnModuleAuthorize(AccessLevel = DotNetNuke.Security.SecurityAccessLevel.Edit)]
+        [HttpGet]
+        [DnnAuthorize(StaticRoles = "Administrators")]
         public HttpResponseMessage GetScheduleBookings(int scheduleId)
         {
             try
@@ -225,9 +240,9 @@ namespace CourseBooking.Controllers.Api
             }
         }
 
-        [System.Web.Http.HttpPost]
-        [DotNetNuke.Web.Api.ValidateAntiForgeryTokenAttribute]
-        [DotNetNuke.Web.Api.DnnModuleAuthorize(AccessLevel = DotNetNuke.Security.SecurityAccessLevel.Edit)]
+        [HttpPost]
+        [DnnAuthorize(StaticRoles = "Administrators")]
+        [ValidateAntiForgeryToken]
         public HttpResponseMessage SendReminders(int scheduleId, int hoursBeforeCourse)
         {
             try

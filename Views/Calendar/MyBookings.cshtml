@@ -10,14 +10,14 @@
     DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
     DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
 
-    var hasUpcomingBookings = System.Linq.Enumerable.Any(Model, b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow);
-    var hasPastBookings = System.Linq.Enumerable.Any(Model, b => b.CourseSchedule.StartTime <= DateTime.UtcNow);
+    var hasUpcomingBookings = Model.Any(b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow);
+    var hasPastBookings = Model.Any(b => b.CourseSchedule.StartTime <= DateTime.UtcNow);
 }
 
 <div class="user-bookings">
     <h2>Az Ön foglalásai</h2>
 
-    @if (!System.Linq.Enumerable.Any(Model))
+    @if (!Model.Any())
     {
         <div class="alert alert-info">
             <p>Önnek még nincs foglalása. <a href="@Url.Action("Index")">Nézze meg a tanfolyam naptárat</a> új foglalás létrehozásához.</p>
@@ -42,9 +42,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var booking in System.Linq.Enumerable.OrderBy(
-                            System.Linq.Enumerable.Where(Model, b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow),
-                            b => b.CourseSchedule.StartTime))
+                        @foreach (var booking in Model.Where(b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow)
+                            .OrderBy(b => b.CourseSchedule.StartTime))
                         {
                             var localStartTime = booking.CourseSchedule.StartTime.ToLocalTime();
                             var localEndTime = booking.CourseSchedule.EndTime.ToLocalTime();
@@ -82,13 +81,13 @@
 
                                         @if (!booking.IsCancelled && booking.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
                                         {
-                                            using (Html.BeginForm("Cancel", "Calendar", new { id = booking.ID }, FormMethod.Post, new { @class = "d-inline cancel-form", onsubmit = "return confirm('Biztosan lemondja a foglalást?');" }))
-                                            {
+                                            <form action="@Url.Action("Cancel", "Calendar", new { id = booking.ID })" method="post" 
+                                                  class="d-inline cancel-form" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-sm btn-danger">
                                                     <i class="fa fa-times"></i> Lemondás
                                                 </button>
-                                            }
+                                            </form>
                                         }
                                     </div>
                                 </td>
@@ -116,9 +115,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var booking in System.Linq.Enumerable.OrderByDescending(
-                            System.Linq.Enumerable.Where(Model, b => b.IsCancelled || b.CourseSchedule.StartTime <= DateTime.UtcNow),
-                            b => b.CourseSchedule.StartTime))
+                        @foreach (var booking in Model.Where(b => b.IsCancelled || b.CourseSchedule.StartTime <= DateTime.UtcNow)
+                            .OrderByDescending(b => b.CourseSchedule.StartTime))
                         {
                             var localStartTime = booking.CourseSchedule.StartTime.ToLocalTime();
                             var localEndTime = booking.CourseSchedule.EndTime.ToLocalTime();
