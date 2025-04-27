@@ -11,25 +11,27 @@ namespace CourseBooking.Services
         CoursePlanEntity GetCoursePlanById(int coursePlanId);
 
         // Course schedule operations
-        IEnumerable<CourseScheduleEntity> GetCourseSchedules(DateTime? fromDate = null, DateTime? toDate = null, bool includeInactive = false);
-        CourseScheduleEntity GetCourseScheduleById(int scheduleId);
-        CourseScheduleEntity CreateCourseSchedule(CourseScheduleEntity schedule);
-        bool UpdateCourseSchedule(CourseScheduleEntity schedule);
-        bool DeleteCourseSchedule(int scheduleId); // Consider implications (inactive vs delete)
+        // Pass ModuleId explicitly to ensure context correctness
+        IEnumerable<CourseScheduleEntity> GetCourseSchedules(int moduleId, DateTime? fromDate = null, DateTime? toDate = null, bool includeInactive = false);
+        CourseScheduleEntity GetCourseScheduleById(int scheduleId, int moduleId); // Added moduleId
+        CourseScheduleEntity CreateCourseSchedule(CourseScheduleEntity schedule); // Assumes context is set during creation
+        bool UpdateCourseSchedule(CourseScheduleEntity schedule); // Assumes context is set during update
+        bool DeleteCourseSchedule(int scheduleId, int moduleId); // Added moduleId
 
         // Booking operations
-        IEnumerable<BookingEntity> GetBookingsByUser(int userId);
-        IEnumerable<BookingEntity> GetBookingsByCourseSchedule(int scheduleId);
-        BookingEntity GetBookingById(int bookingId);
-        BookingEntity CreateBooking(int courseScheduleId, int userId, string notes = null);
-        bool CancelBooking(int bookingId);
-
-        // Notification operations REMOVED
-        // bool SendBookingConfirmation(int bookingId);
-        // bool SendCourseReminder(int bookingId, int hoursBeforeCourse);
+        // Pass ModuleId explicitly
+        IEnumerable<BookingEntity> GetBookingsByUser(int userId, int moduleId); // Added moduleId
+        IEnumerable<BookingEntity> GetBookingsByCourseSchedule(int scheduleId, int moduleId); // Added moduleId
+        BookingEntity GetBookingById(int bookingId, int moduleId); // Added moduleId
+        BookingEntity CreateBooking(int courseScheduleId, int userId, int moduleId, string notes = null); // Added moduleId
+        bool CancelBooking(int bookingId, int moduleId); // Added moduleId
 
         // Helper operations
-        int GetBookingCountForSchedule(int scheduleId); // Still useful
-        bool IsUserRegisteredForSchedule(int scheduleId, int userId); // Still useful
+        // Pass ModuleId explicitly
+        int GetBookingCountForSchedule(int scheduleId, int moduleId); // Added moduleId
+        bool IsUserRegisteredForSchedule(int scheduleId, int userId, int moduleId); // Added moduleId
+
+        // Context setting (keep for methods that inherently need it like Create/Update)
+        void SetContext(int moduleId, int portalId);
     }
 }

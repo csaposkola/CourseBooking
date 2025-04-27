@@ -8,7 +8,6 @@ using DotNetNuke.Framework.JavaScriptLibraries;
 using DotNetNuke.Services.Exceptions;
 using DotNetNuke.Web.Mvc.Framework.ActionFilters;
 using DotNetNuke.Web.Mvc.Framework.Controllers;
-using DotNetNuke.Security;
 using DotNetNuke.Security.Permissions;
 
 namespace CourseBooking.Controllers
@@ -17,25 +16,56 @@ namespace CourseBooking.Controllers
     public class CalendarController : DnnController
     {
         private readonly IBookingService _bookingService;
-        
-        public CalendarController() {
-             if (this.ModuleContext?.Configuration != null && this.PortalSettings != null) {
-                  _bookingService = new BookingService(this.ModuleContext.Configuration.ModuleID, this.PortalSettings.PortalId);
-             } else {
-                  // Log critical failure if context is unavailable during instantiation
-                  try {
-                      Exceptions.LogException(new InvalidOperationException("CalendarController could not initialize BookingService due to missing Module or Portal context."));
-                  } catch { /* Failsafe if logging fails */ }
-                  _bookingService = null;
-             }
+
+        // Constructor without DI (simple instantiation)
+        public CalendarController() : this(new BookingService())
+        {
         }
 
-        // Helper to check service availability and set TempData for errors
+        // Constructor for potential DI or direct instantiation
+        public CalendarController(IBookingService bookingService)
+        {
+             _bookingService = bookingService ?? throw new ArgumentNullException(nameof(bookingService));
+             // Context setting removed from constructor
+        }
+
+        // Helper to get ModuleId reliably (includes header check)
+        private int GetCurrentModuleId()
+        {
+            // Prioritize ModuleContext if available (might be null early in POST)
+            if (ModuleContext?.Configuration != null && ModuleContext.Configuration.ModuleID > 0)
+            {
+                return ModuleContext.Configuration.ModuleID;
+            }
+
+            // Try ActiveModule (might also be null early in POST)
+            if (ActiveModule != null && ActiveModule.ModuleID > 0)
+            {
+                return ActiveModule.ModuleID;
+            }
+
+            // Check Request Headers (Set by ajaxHandler.js for POST/AJAX - might still be useful elsewhere)
+            if (Request?.Headers["ModuleId"] != null && int.TryParse(Request.Headers["ModuleId"], out int moduleIdFromHeader) && moduleIdFromHeader > 0)
+            {
+                return moduleIdFromHeader;
+            }
+
+            // Fallback to trying QueryString (less reliable for MVC POST Actions, but good for GET)
+            if (Request?.QueryString["moduleId"] != null && int.TryParse(Request.QueryString["moduleId"], out int moduleIdFromQs))
+            {
+                if (moduleIdFromQs > 0) return moduleIdFromQs;
+            }
+
+            // Log failure if no valid ModuleId found
+            Exceptions.LogException(new InvalidOperationException($"Failed to get ModuleId in CalendarController. Context/ActiveModule null, Header missing/invalid, QueryString missing/invalid. User: {User?.UserID ?? -1}"));
+            return -1; // Indicate failure
+        }
+
+        // Helper to check service availability
         private bool EnsureServiceAvailable()
         {
              if (_bookingService == null) {
-                  TempData["ErrorMessage"] = "The booking service is currently unavailable. Please try again later.";
-                  // Also log this internally if it wasn't logged during construction
+                  TempData["ErrorMessage"] = "A foglalási szolgáltatás jelenleg nem elérhető. Kérjük, próbálja újra később.";
                   try {
                       Exceptions.LogException(new InvalidOperationException("BookingService was null when EnsureServiceAvailable was called in CalendarController."));
                   } catch { /* Failsafe */ }
@@ -48,29 +78,28 @@ namespace CourseBooking.Controllers
         [ModuleAction(ControlKey = "Edit", TitleKey = "ManageSchedules")]
         public ActionResult Index()
         {
-            // Explicitly qualify the static DNN JavaScript class to avoid ambiguity
             DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
             DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+            ServicesFramework.Instance.RequestAjaxAntiForgerySupport(); // Keep for potential future use or other forms
 
-            // Keep AntiForgery support request for API calls from calendar.js
-            ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+            var currentModuleId = GetCurrentModuleId();
+            if (currentModuleId <= 0)
+            {
+                ViewBag.ErrorMessage = "Hiba: A modul kontextus nem határozható meg. A naptár nem jeleníthető meg.";
+                Exceptions.LogException(new InvalidOperationException("Failed to get ModuleId in CalendarController.Index."));
+                return View();
+            }
 
             var currentDate = DateTime.Now;
             ViewBag.CurrentYear = currentDate.Year;
             ViewBag.CurrentMonth = currentDate.Month;
-
-            // Pass context info needed by the view/JS
-            ViewBag.ModuleId = ModuleContext.Configuration.ModuleID;
+            ViewBag.ModuleId = currentModuleId;
             ViewBag.UserId = User?.UserID ?? 0;
-            
-            // Explicitly set IsAdmin to prevent null value errors
-            ViewBag.IsAdmin = User != null && 
-                (User.IsInRole(PortalSettings.AdministratorRoleName) || 
+            ViewBag.IsAdmin = User != null &&
+                (User.IsInRole(PortalSettings.AdministratorRoleName) ||
                  ModulePermissionController.HasModulePermission(ModuleContext.Configuration.ModulePermissions, "EDIT"));
-                
             ViewBag.InitialLocale = System.Threading.Thread.CurrentThread.CurrentUICulture.Name;
-
-            // Pass any messages from TempData to ViewBag for the view
+            // Display messages from previous actions (redirects)
             ViewBag.ErrorMessage = TempData["ErrorMessage"];
             ViewBag.SuccessMessage = TempData["SuccessMessage"];
 
@@ -82,25 +111,32 @@ namespace CourseBooking.Controllers
         {
             if (!EnsureServiceAvailable()) return RedirectToAction("Index");
 
-            var schedule = _bookingService.GetCourseScheduleById(id);
+            var currentModuleId = GetCurrentModuleId();
+            if (currentModuleId <= 0)
+            {
+                Exceptions.LogException(new InvalidOperationException($"Failed to get ModuleId in CalendarController.Details for Schedule ID {id}."));
+                TempData["ErrorMessage"] = "Hiba történt a kurzus részleteinek lekérése közben (Kontextus Hiba).";
+                return RedirectToAction("Index");
+            }
+
+            var schedule = _bookingService.GetCourseScheduleById(id, currentModuleId);
             if (schedule == null)
             {
-                TempData["ErrorMessage"] = "The requested course schedule was not found.";
+                Exceptions.LogException(new Exception($"Schedule not found. Details requested for Schedule ID {id} in Module ID {currentModuleId}. User: {User?.UserID ?? -1}"));
+                TempData["ErrorMessage"] = "A kért kurzus időpont nem található, vagy nem tartozik ehhez a modul példányhoz.";
                 return RedirectToAction("Index");
             }
 
             // Determine user's status regarding this schedule
             if (Request.IsAuthenticated)
             {
-                ViewBag.IsRegistered = _bookingService.IsUserRegisteredForSchedule(id, User.UserID);
+                ViewBag.IsRegistered = _bookingService.IsUserRegisteredForSchedule(id, User.UserID, currentModuleId);
                 if ((bool)ViewBag.IsRegistered)
                 {
-                    // Find the active booking if they are registered
-                    ViewBag.UserBooking = _bookingService.GetBookingsByCourseSchedule(id)
+                    ViewBag.UserBooking = _bookingService.GetBookingsByCourseSchedule(id, currentModuleId)
                                                     .FirstOrDefault(b => b.UserID == User.UserID && !b.IsCancelled);
                 }
-                 // Check if registration is possible
-                 ViewBag.CanRegister = !(bool)ViewBag.IsRegistered
+                ViewBag.CanRegister = !(bool)ViewBag.IsRegistered
                                       && schedule.RemainingSeats > 0
                                       && schedule.StartTime.ToUniversalTime() > DateTime.UtcNow;
             }
@@ -112,147 +148,183 @@ namespace CourseBooking.Controllers
                                      && schedule.StartTime.ToUniversalTime() > DateTime.UtcNow;
             }
 
-            // Pass messages
+            // Display messages from previous actions (redirects)
             ViewBag.ErrorMessage = TempData["ErrorMessage"];
             ViewBag.SuccessMessage = TempData["SuccessMessage"];
 
-            // Pass the schedule model to the view
+            // We don't need the AJAX check here anymore as the form post is standard
             return View(schedule);
         }
 
-        // Action to handle the POST request for registering
+        // Action to handle the POST request for registering (Standard POST)
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
         [Authorize] // Ensures user is logged in
-        public ActionResult Register(int scheduleId, string notes)
+        public ActionResult Register(int scheduleId, string notes) // Make sure form field name is 'scheduleId'
         {
-            // Check login status (redundant with [Authorize] but safe)
             if (!Request.IsAuthenticated || User.UserID <= 0)
             {
-                return new HttpUnauthorizedResult("User must be logged in to register.");
+                return new HttpUnauthorizedResult("A foglaláshoz bejelentkezés szükséges.");
             }
 
-            // Ensure service is ready before proceeding
             if (!EnsureServiceAvailable()) return RedirectToAction("Details", new { id = scheduleId });
+
+            var currentModuleId = GetCurrentModuleId();
+            if (currentModuleId <= 0)
+            {
+                Exceptions.LogException(new InvalidOperationException($"Failed to get ModuleId within CalendarController.Register action for Schedule ID {scheduleId}. Booking cannot proceed. User: {User?.UserID}"));
+                TempData["ErrorMessage"] = "Hiba történt a foglalás feldolgozása közben (Modul Kontextus Hiba). Kérjük, próbálja újra.";
+                return RedirectToAction("Details", new { id = scheduleId });
+            }
 
             try
             {
-                // Attempt booking via service layer
-                var booking = _bookingService.CreateBooking(scheduleId, User.UserID, notes);
+                var booking = _bookingService.CreateBooking(scheduleId, User.UserID, currentModuleId, notes);
 
-                // Set success message and redirect to confirmation
-                TempData["SuccessMessage"] = "Booking successful!";
+                // --- Standard Redirect on Success ---
+                TempData["SuccessMessage"] = "Foglalás sikeres!";
                 return RedirectToAction("Confirmation", new { id = booking.ID });
             }
-            // Catch specific business exceptions from the service
-            catch (CourseBooking.Services.BookingException ex) // Qualify exception type if needed
+            catch (CourseBooking.Services.BookingException ex)
             {
-                Exceptions.LogException(ex); // Log the business error details
-                TempData["ErrorMessage"] = ex.Message; // Show user-friendly message
-                return RedirectToAction("Details", new { id = scheduleId }); // Redirect back to details page
+                Exceptions.LogException(ex);
+                // --- Redirect back to Details with Error ---
+                TempData["ErrorMessage"] = ex.Message;
+                return RedirectToAction("Details", new { id = scheduleId });
             }
-            // Catch any other unexpected errors
+            catch (ArgumentOutOfRangeException argEx)
+            {
+                Exceptions.LogException(new Exception($"ArgumentOutOfRangeException likely due to invalid ModuleId ({currentModuleId}) in Register action.", argEx));
+                // --- Redirect back to Details with Error ---
+                TempData["ErrorMessage"] = "Hiba történt a foglalás feldolgozása közben (Érvénytelen Kontextus). Kérjük, próbálja újra.";
+                return RedirectToAction("Details", new { id = scheduleId });
+            }
             catch (Exception ex)
             {
-                Exceptions.LogException(ex); // Log unexpected error
-                TempData["ErrorMessage"] = "An unexpected error occurred while processing your booking.";
-                return RedirectToAction("Details", new { id = scheduleId }); // Redirect back to details page
+                Exceptions.LogException(ex);
+                // --- Redirect back to Details with Error ---
+                TempData["ErrorMessage"] = "Váratlan hiba történt a foglalás feldolgozása közben.";
+                return RedirectToAction("Details", new { id = scheduleId });
             }
         }
 
         // Action to display the booking confirmation page
-        [Authorize] // User must be logged in
+        [Authorize]
         public ActionResult Confirmation(int id) // id is BookingID
         {
             if (!EnsureServiceAvailable()) return RedirectToAction("Index");
 
-            var booking = _bookingService.GetBookingById(id);
+             var currentModuleId = GetCurrentModuleId();
+             if (currentModuleId <= 0)
+             {
+                 Exceptions.LogException(new InvalidOperationException($"Failed to get ModuleId in CalendarController.Confirmation for Booking ID {id}."));
+                 TempData["ErrorMessage"] = "Hiba történt a foglalás visszaigazolásának lekérése közben (Kontextus Hiba).";
+                 return RedirectToAction("MyBookings");
+             }
+
+            var booking = _bookingService.GetBookingById(id, currentModuleId);
             if (booking == null)
             {
-                TempData["ErrorMessage"] = "Booking confirmation not found.";
-                return RedirectToAction("MyBookings"); // Go to list if specific one isn't found
+                TempData["ErrorMessage"] = "A foglalási visszaigazolás nem található, vagy nem ehhez a modulhoz tartozik.";
+                return RedirectToAction("MyBookings");
             }
 
-            // Security: Ensure user owns the booking or is an admin
-            if (booking.UserID != User.UserID && !User.IsAdmin)
+            if (booking.UserID != User.UserID && !(User.IsInRole(PortalSettings.AdministratorRoleName) || ModulePermissionController.HasModulePermission(ModuleContext.Configuration.ModulePermissions, "EDIT")))
             {
-                 Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to access booking {id} owned by user {booking.UserID}."));
-                 TempData["ErrorMessage"] = "You do not have permission to view this booking confirmation.";
-                 return RedirectToAction("MyBookings"); // Redirect away
+                 Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to access booking {id} owned by user {booking.UserID} (Module {currentModuleId})."));
+                 TempData["ErrorMessage"] = "Nincs jogosultsága megtekinteni ezt a foglalási visszaigazolást.";
+                 return RedirectToAction("MyBookings");
             }
 
-            // Pass messages
+            // Display messages from previous actions (like the success message from Register)
             ViewBag.ErrorMessage = TempData["ErrorMessage"];
             ViewBag.SuccessMessage = TempData["SuccessMessage"];
 
-            // Pass booking model to the view
+            // We don't need the AJAX check here anymore for this action
             return View(booking);
         }
 
-        // Action to handle the POST request for cancelling a booking
+        // Action to handle the POST request for cancelling a booking (Standard POST)
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
-        [Authorize] // User must be logged in
-        public ActionResult Cancel(int id)
+        [Authorize]
+        public ActionResult Cancel(int id) // id is BookingID
         {
-             if (!EnsureServiceAvailable()) return RedirectToAction("MyBookings");
+            if (!EnsureServiceAvailable()) return RedirectToAction("MyBookings");
 
-            // Retrieve booking first to check ownership and existence
-            var booking = _bookingService.GetBookingById(id);
-             if (booking == null)
-             {
-                 TempData["ErrorMessage"] = "Booking not found.";
-                 return RedirectToAction("MyBookings");
-             }
-             
-             if (booking.UserID != User.UserID && !User.IsAdmin)
-             {
-                 Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to cancel booking {id} owned by user {booking.UserID}."));
-                 TempData["ErrorMessage"] = "You do not have permission to cancel this booking.";
-                 return RedirectToAction("MyBookings");
-             }
+            var currentModuleId = GetCurrentModuleId();
+            if (currentModuleId <= 0)
+            {
+                Exceptions.LogException(new InvalidOperationException($"Failed to get ModuleId in CalendarController.Cancel for Booking ID {id}."));
+                TempData["ErrorMessage"] = "Hiba történt a foglalás lemondása közben (Kontextus Hiba).";
+                // Redirect back to MyBookings as that's the most likely place this was triggered
+                return RedirectToAction("MyBookings");
+            }
+
+            var booking = _bookingService.GetBookingById(id, currentModuleId);
+            if (booking == null)
+            {
+                TempData["ErrorMessage"] = "A foglalás nem található, vagy nem ehhez a modulhoz tartozik.";
+                return RedirectToAction("MyBookings");
+            }
+
+            if (booking.UserID != User.UserID && !(User.IsInRole(PortalSettings.AdministratorRoleName) || ModulePermissionController.HasModulePermission(ModuleContext.Configuration.ModulePermissions, "EDIT")))
+            {
+                Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to cancel booking {id} owned by user {booking.UserID} (Module {currentModuleId})."));
+                TempData["ErrorMessage"] = "Nincs jogosultsága lemondani ezt a foglalást.";
+                return RedirectToAction("MyBookings");
+            }
 
             try
             {
-                _bookingService.CancelBooking(id);
-                TempData["SuccessMessage"] = "Booking cancelled successfully.";
-                return RedirectToAction("MyBookings"); // Show updated list
-            }
-            // Catch specific business exceptions (e.g., cancellation window closed)
-            catch (CourseBooking.Services.BookingException ex) // Qualify if needed
-            {
-                 Exceptions.LogException(ex); // Log details
-                 TempData["ErrorMessage"] = ex.Message; // Show user message
-                 return RedirectToAction("MyBookings"); // Redirect back to list
-            }
+                _bookingService.CancelBooking(id, currentModuleId);
 
+                // --- Standard Redirect on Success ---
+                TempData["SuccessMessage"] = "Foglalás sikeresen lemondva.";
+                return RedirectToAction("MyBookings"); // Redirect back to MyBookings after successful cancel
+            }
+            catch (CourseBooking.Services.BookingException ex)
+            {
+                 Exceptions.LogException(ex);
+                 // --- Redirect back with Error ---
+                 TempData["ErrorMessage"] = ex.Message;
+                 return RedirectToAction("MyBookings"); // Show error on MyBookings page
+            }
             catch (Exception ex)
             {
-                 Exceptions.LogException(ex); // Log details
-                 TempData["ErrorMessage"] = "An unexpected error occurred while cancelling the booking.";
-                 return RedirectToAction("MyBookings"); // Redirect back to list
+                 Exceptions.LogException(ex);
+                 // --- Redirect back with Error ---
+                 TempData["ErrorMessage"] = "Váratlan hiba történt a foglalás lemondása közben.";
+                 return RedirectToAction("MyBookings"); // Show error on MyBookings page
             }
         }
 
         // Action to display the current user's bookings
-        [Authorize] // User must be logged in
+        [Authorize]
         public ActionResult MyBookings()
         {
-            if (!EnsureServiceAvailable()) return View(Enumerable.Empty<BookingEntity>()); // Show empty view if service fails
+            if (!EnsureServiceAvailable()) return View(Enumerable.Empty<BookingEntity>());
 
-            // Check authentication (redundant but safe)
+             var currentModuleId = GetCurrentModuleId();
+             if (currentModuleId <= 0)
+             {
+                 Exceptions.LogException(new InvalidOperationException($"Failed to get ModuleId in CalendarController.MyBookings. User: {User?.UserID}"));
+                 ViewBag.ErrorMessage = "Hiba történt a foglalások lekérése közben (Kontextus Hiba).";
+                 // Display the error directly in the view if context fails here
+             }
+
              if (!Request.IsAuthenticated || User.UserID <= 0) {
                  return new HttpUnauthorizedResult();
              }
 
-            // Get user's bookings via service
-            var bookings = _bookingService.GetBookingsByUser(User.UserID);
+            // Get user's bookings via service, passing ModuleId
+            var bookings = _bookingService.GetBookingsByUser(User.UserID, currentModuleId);
 
-            // Pass messages
-            ViewBag.ErrorMessage = TempData["ErrorMessage"];
-            ViewBag.SuccessMessage = TempData["SuccessMessage"];
+            // Display messages from previous actions (like cancellation results)
+             if (ViewBag.ErrorMessage == null) ViewBag.ErrorMessage = TempData["ErrorMessage"]; // Prioritize direct ViewBag error if exists
+             ViewBag.SuccessMessage = TempData["SuccessMessage"];
 
-            // Pass bookings model to the view
+            // We don't need the AJAX check here anymore for this action
             return View(bookings);
         }
     }

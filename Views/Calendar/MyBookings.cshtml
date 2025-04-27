@@ -7,29 +7,45 @@
 @inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<IEnumerable<BookingEntity>>
 
 @{
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
-    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery); // Keep for potential future UI enhancements
+    // DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI); // Likely not needed
+    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport(); // Keep for cancellation form
 
     var hasUpcomingBookings = Model.Any(b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow);
-    var hasPastBookings = Model.Any(b => b.CourseSchedule.StartTime <= DateTime.UtcNow);
-    
-    var isAjax = Request.QueryString["isAjax"] == "true" || Request.IsAjaxRequest() || ViewBag.IsAjaxRequest == true;
-    
-    // If this is a popup, we don't need the wrapper layout
-    if (isAjax)
-    {
-        Layout = null;
-    }
+    var hasPastBookings = Model.Any(b => b.IsCancelled || b.CourseSchedule.StartTime <= DateTime.UtcNow);
+
+    // No AJAX check needed here
+    // Layout = "~/DesktopModules/MVC/CourseBooking/Views/Shared/_Layout.cshtml"; // Should use default layout
 }
 
 <div class="user-bookings">
     <h2>Az Ön foglalásai</h2>
 
-    @if (!Model.Any())
+    @* ADDED: Display TempData messages *@
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+     @* Use ViewBag here as controller might set it directly on error or get it from TempData *@
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+    @if (ViewBag.SuccessMessage != null)
+    {
+         <div class="alert alert-success">@ViewBag.SuccessMessage</div>
+    }
+    @* END ADDED *@
+
+
+    @if (!Model.Any() && ViewBag.ErrorMessage == null) // Only show "no bookings" if there isn't an error message already
     {
         <div class="alert alert-info">
-            <p>Önnek még nincs foglalása. <a href="@Url.Action("Index")" class="return-to-calendar">Nézze meg a tanfolyam naptárat</a> új foglalás létrehozásához.</p>
+            <p>Önnek még nincs foglalása. <a href="@Url.Action("Index")">Nézze meg a tanfolyam naptárat</a> új foglalás létrehozásához.</p>
         </div>
     }
     else
@@ -37,7 +53,7 @@
         if (hasUpcomingBookings)
         {
             <h3>Közelgő foglalások</h3>
-            <div class="bookings-table-container">
+            <div class="bookings-table-container table-responsive"> @* Add table-responsive *@
                 <table class="table table-striped">
                     <thead>
                         <tr>
@@ -73,27 +89,22 @@
                                     }
                                 </td>
                                 <td>
-                                    @if (booking.IsCancelled)
-                                    {
-                                        <span class="badge badge-secondary">Lemondva</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-success">Aktív</span>
-                                    }
+                                    <span class="badge badge-success">Aktív</span>
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" class="btn btn-sm btn-default open-modal" 
-                                           data-modal="true" data-modal-title="@booking.CourseSchedule.CoursePlan.Name részletei">
+                                        @* Link to details page (not modal) *@
+                                        <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" class="btn btn-sm btn-default">
                                             <i class="fa fa-search"></i> Részletek
                                         </a>
 
                                         @if (!booking.IsCancelled && booking.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
                                         {
-                                            <form action="@Url.Action("Cancel", "Calendar", new { id = booking.ID })" method="post" 
-                                                  class="d-inline cancel-form" data-ajax="true" data-success-callback="onCancelSuccess" 
+                                            @* Standard POST form for cancellation *@
+                                            <form action="@Url.Action("Cancel", "Calendar", new { id = booking.ID })" method="post"
+                                                  class="d-inline cancel-form"
                                                   onsubmit="return confirm('Biztosan lemondja a foglalást?');">
+                                                @* REMOVED: data-ajax, callbacks *@
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-sm btn-danger">
                                                     <i class="fa fa-times"></i> Lemondás
@@ -112,10 +123,10 @@
         if (hasPastBookings)
         {
             <h3>Korábbi foglalások</h3>
-            <div class="bookings-table-container">
+            <div class="bookings-table-container table-responsive"> @* Add table-responsive *@
                 <table class="table table-striped">
                     <thead>
-                        <tr>
+                         <tr>
                             <th>Tanfolyam</th>
                             <th>Dátum</th>
                             <th>Időpont</th>
@@ -158,9 +169,9 @@
                                     }
                                 </td>
                                 <td>
-                                    <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })" 
-                                       class="btn btn-sm btn-default open-modal" data-modal="true" 
-                                       data-modal-title="@booking.CourseSchedule.CoursePlan.Name részletei">
+                                     @* Link to details page (not modal) *@
+                                    <a href="@Url.Action("Details", new { id = booking.CourseScheduleID })"
+                                       class="btn btn-sm btn-default">
                                         <i class="fa fa-search"></i> Részletek
                                     </a>
                                 </td>
@@ -173,71 +184,23 @@
     }
 
     <div class="booking-actions">
-        <button type="button" class="btn btn-default return-to-calendar">
-            <i class="fa fa-calendar"></i> Vissza a naptárhoz
-        </button>
-        
-        @if (isAjax)
-        {
-            <button type="button" class="btn btn-default modal-close">Bezárás</button>
-        }
+        <a href="@Url.Action("Index")" class="btn btn-default">
+             <i class="fa fa-calendar"></i> Vissza a naptárhoz
+        </a>
+        @* No modal close button needed *@
     </div>
 </div>
 
 @{
+    // Register stylesheet if not globally registered
     ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
 }
 
-<script type="text/javascript">
-    $(document).ready(function() {
-        // Initialize modal handling for links inside this view
-        $(".open-modal").on("click", function(e) {
-            e.preventDefault();
-            var url = $(this).attr("href");
-            var title = $(this).data("modal-title") || "Részletek";
-            
-            // Check if we're in a modal already
-            if (window.parent && window.parent.CourseBookingAjax) {
-                window.parent.CourseBookingAjax.openModalUrl(url, title);
-            } else if (window.CourseBookingAjax) {
-                CourseBookingAjax.openModalUrl(url, title);
-            } else {
-                window.location.href = url; // Fallback to direct navigation
-            }
-        });
-        
-        // Handle return to calendar
-        $(".return-to-calendar").on("click", function(e) {
-            e.preventDefault();
-            
-            // If in modal, close it
-            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
-                window.parent.$('#courseBookingModal').dialog('close');
-            } else {
-                window.location.href = '@Url.Action("Index")';
-            }
-        });
-        
-        // Modal close button
-        $(".modal-close").on("click", function() {
-            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
-                window.parent.$('#courseBookingModal').dialog('close');
-            } else if ($('#courseBookingModal').dialog('instance')) {
-                $('#courseBookingModal').dialog('close');
-            }
-        });
-    });
-    
-    // Cancel success callback function
-    function onCancelSuccess(response) {
-        alert('A foglalást sikeresen lemondta.');
-        
-        // Refresh the current page to show updated booking status
-        window.location.reload();
-        
-        // If in parent window, refresh calendar data
-        if (window.parent && window.parent.courseCalendar) {
-            window.parent.courseCalendar.loadCalendarData();
-        }
-    }
-</script>
+@* Removed the script block related to modal opening and AJAX cancellation *@
+<style>
+.cancelled-row td {
+     text-decoration: line-through;
+     color: #6c757d; /* Bootstrap's secondary text color */
+}
+.d-inline { display: inline-block; } /* Helper class for inline form */
+</style>

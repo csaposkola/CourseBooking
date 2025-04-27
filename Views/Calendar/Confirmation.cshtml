@@ -7,23 +7,30 @@
 @inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<BookingEntity>
 
 @{
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
-    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery); // Keep for copy button
+    // DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI); // Likely not needed here
+    // DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport(); // Not needed for display
 
     var localStartTime = Model.CourseSchedule.StartTime.ToLocalTime();
     var localEndTime = Model.CourseSchedule.EndTime.ToLocalTime();
-    
-    var isAjax = Request.QueryString["isAjax"] == "true" || Request.IsAjaxRequest() || ViewBag.IsAjaxRequest == true;
-    
-    // If this is a popup, we don't need the wrapper layout
-    if (isAjax)
-    {
-        Layout = null;
-    }
+
+    // No AJAX check needed here as it's the destination of a redirect
+    // Layout = "~/DesktopModules/MVC/CourseBooking/Views/Shared/_Layout.cshtml"; // Should use default layout
 }
 
 <div class="booking-confirmation">
+
+    @* ADDED: Display TempData messages *@
+    @if (TempData["ErrorMessage"] != null) @* Display error if redirected here unexpectedly *@
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+    @if (TempData["SuccessMessage"] != null) @* Display success message from Register action *@
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+    @* END ADDED *@
+
     <div class="panel panel-success">
         <div class="panel-heading">
             <h3 class="panel-title"><i class="fa fa-check-circle"></i> Foglalás visszaigazolása</h3>
@@ -33,55 +40,51 @@
             <p>Az Ön foglalása <strong>@Model.CourseSchedule.CoursePlan.Name</strong> tanfolyamra sikeresen rögzítésre került.</p>
 
             <div class="booking-details">
+                @* ... (Booking details DL lists remain the same) ... *@
                 <div class="row">
-                    <div class="col-md-6">
-                        <h5>Tanfolyam adatok</h5>
-                        <dl class="dl-horizontal">
-                            <dt>Tanfolyam neve:</dt>
-                            <dd>@Model.CourseSchedule.CoursePlan.Name</dd>
-
-                            <dt>Kategória:</dt>
-                            <dd>@Model.CourseSchedule.CoursePlan.CourseCategory</dd>
-
-                            <dt>Dátum:</dt>
-                            <dd>@localStartTime.ToString("yyyy. MMMM d.")</dd>
-
-                            <dt>Időpont:</dt>
-                            <dd>@localStartTime.ToString("HH:mm") - @localEndTime.ToString("HH:mm")</dd>
-
-                            <dt>Időtartam:</dt>
-                            <dd>@Model.CourseSchedule.CoursePlan.DurationHours óra</dd>
-                        </dl>
-                    </div>
-
-                    <div class="col-md-6">
-                        <h5>Foglalási adatok</h5>
-                        <dl class="dl-horizontal">
-                            <dt>Foglalási azonosító:</dt>
-                            <dd>@Model.ID</dd>
-
-                            <dt>Foglalás ideje:</dt>
-                            <dd>@Model.BookingTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</dd>
-
-                            <dt>Kupon kód:</dt>
-                            <dd>
-                                <div class="voucher-container">
-                                    <span id="voucherCode" class="voucher-code">@Model.VoucherCode</span>
-                                    <button id="copyVoucher" class="btn btn-xs btn-default" title="Másolás a vágólapra">
-                                        <i class="fa fa-copy"></i>
-                                    </button>
-                                </div>
-                            </dd>
-
-                            <dt>Fizetési állapot:</dt>
-                            <dd>@Model.PaymentStatus</dd>
-                        </dl>
-                    </div>
-                </div>
+                     <div class="col-md-6">
+                         <h5>Tanfolyam adatok</h5>
+                         <dl class="dl-horizontal">
+                             <dt>Tanfolyam neve:</dt>
+                             <dd>@Model.CourseSchedule.CoursePlan.Name</dd>
+                             <dt>Kategória:</dt>
+                             <dd>@Model.CourseSchedule.CoursePlan.CourseCategory</dd>
+                             <dt>Dátum:</dt>
+                             <dd>@localStartTime.ToString("yyyy. MMMM d.")</dd>
+                             <dt>Időpont:</dt>
+                             <dd>@localStartTime.ToString("HH:mm") - @localEndTime.ToString("HH:mm")</dd>
+                             <dt>Időtartam:</dt>
+                             <dd>@Model.CourseSchedule.CoursePlan.DurationHours óra</dd>
+                         </dl>
+                     </div>
+                     <div class="col-md-6">
+                         <h5>Foglalási adatok</h5>
+                         <dl class="dl-horizontal">
+                             <dt>Foglalási azonosító:</dt>
+                             <dd>@Model.ID</dd>
+                             <dt>Foglalás ideje:</dt>
+                             <dd>@Model.BookingTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</dd>
+                             <dt>Kupon kód:</dt>
+                             <dd>
+                                 <div class="voucher-container input-group" style="max-width: 250px;"> @* Use input-group for layout *@
+                                     <span id="voucherCode" class="voucher-code form-control" style="background-color:#eee;">@Model.VoucherCode</span>
+                                     <span class="input-group-btn">
+                                         <button type="button" id="copyVoucher" class="btn btn-default" title="Másolás a vágólapra">
+                                             <i class="fa fa-copy"></i>
+                                         </button>
+                                     </span>
+                                 </div>
+                             </dd>
+                             <dt>Fizetési állapot:</dt>
+                             <dd>@Model.PaymentStatus</dd>
+                         </dl>
+                     </div>
+                 </div>
             </div>
 
             <div class="booking-instructions">
-                <div class="alert alert-info">
+                @* ... (Instructions remain the same) ... *@
+                 <div class="alert alert-info">
                     <h5><i class="fa fa-info-circle"></i> Fontos információk</h5>
                     <ul>
                         <li>A kupon kódot a tanfolyamon való részvételkor kell felmutatni.</li>
@@ -95,128 +98,46 @@
     </div>
 
     <div class="confirmation-actions">
-        @if (!Model.IsCancelled && Model.CourseSchedule.StartTime > DateTime.UtcNow.AddHours(24))
-        {
-            <form action="@Url.Action("Cancel", "Calendar", new { id = Model.ID })" method="post" 
-                  class="d-inline cancel-form" data-ajax="true" data-success-callback="onCancelSuccess" 
-                  onsubmit="return confirm('Biztosan lemondja a foglalást?');">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-danger">
-                    <i class="fa fa-times"></i> Foglalás lemondása
-                </button>
-            </form>
-        }
-
-        <a href="@Url.Action("MyBookings")" class="btn btn-primary view-my-bookings" data-modal="true" data-modal-title="Foglalásaim">
+        @* Link to MyBookings - not a modal anymore *@
+        <a href="@Url.Action("MyBookings")" class="btn btn-primary">
             <i class="fa fa-list"></i> Foglalásaim megtekintése
         </a>
 
-        <a href="@Url.Action("Index")" class="btn btn-default return-to-calendar">
+        <a href="@Url.Action("Index")" class="btn btn-default">
             <i class="fa fa-calendar"></i> Vissza a naptárhoz
         </a>
-        
-        @if (isAjax)
-        {
-            <button type="button" class="btn btn-default modal-close">Bezárás</button>
-        }
+        @* No need for modal-close button anymore *@
     </div>
 </div>
 
 @{
+    // Register stylesheet if not globally registered
     ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
 }
 
+@* Keep minimal script for copy voucher *@
 <script type="text/javascript">
     $(document).ready(function () {
         // Copy voucher code button
         $("#copyVoucher").click(function () {
             var voucherText = $("#voucherCode").text();
+            if(!voucherText) return;
 
-            // Create temporary element
             var tempInput = $("<input>");
             $("body").append(tempInput);
             tempInput.val(voucherText).select();
-
-            // Execute copy command
-            document.execCommand("copy");
+            try {
+                 document.execCommand("copy");
+                 var $btn = $(this);
+                 var originalHtml = $btn.html();
+                 $btn.html('<i class="fa fa-check"></i>').prop('disabled', true);
+                 setTimeout(function () { $btn.html(originalHtml).prop('disabled', false); }, 1500);
+            } catch (e) {
+                 console.error("Failed to copy voucher code:", e);
+                 alert("Másolás sikertelen.");
+            }
             tempInput.remove();
-
-            // Show success message
-            var $btn = $(this);
-            var originalHtml = $btn.html();
-            $btn.html('<i class="fa fa-check"></i>');
-
-            setTimeout(function () {
-                $btn.html(originalHtml);
-            }, 1500);
-        });
-        
-        // View my bookings button
-        $(".view-my-bookings").on("click", function(e) {
-            e.preventDefault();
-            var url = $(this).attr("href");
-            var title = $(this).data("modal-title") || "Foglalásaim";
-            
-            // Check if we're in a modal already
-            if (window.parent && window.parent.CourseBookingAjax) {
-                window.parent.CourseBookingAjax.openModalUrl(url, title, {
-                    width: 900,
-                    height: 600
-                });
-            } else if (window.CourseBookingAjax) {
-                CourseBookingAjax.openModalUrl(url, title, {
-                    width: 900,
-                    height: 600
-                });
-            } else {
-                window.location.href = url; // Fallback to direct navigation
-            }
-        });
-        
-        // Return to calendar button
-        $(".return-to-calendar").on("click", function(e) {
-            e.preventDefault();
-            
-            // If in modal, close it
-            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
-                window.parent.$('#courseBookingModal').dialog('close');
-                // Refresh calendar data
-                if (window.parent.courseCalendar) {
-                    window.parent.courseCalendar.loadCalendarData();
-                }
-            } else {
-                window.location.href = '@Url.Action("Index")';
-            }
-        });
-        
-        // Modal close button
-        $(".modal-close").on("click", function() {
-            if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
-                window.parent.$('#courseBookingModal').dialog('close');
-                // Refresh calendar data in parent window
-                if (window.parent.courseCalendar) {
-                    window.parent.courseCalendar.loadCalendarData();
-                }
-            } else if ($('#courseBookingModal').dialog('instance')) {
-                $('#courseBookingModal').dialog('close');
-            }
         });
     });
     
-    // Cancel success callback function
-    function onCancelSuccess(response) {
-        alert('A foglalást sikeresen lemondta.');
-        
-        // Close modal if in one
-        if (window.parent && window.parent.$('#courseBookingModal').dialog('instance')) {
-            window.parent.$('#courseBookingModal').dialog('close');
-            // Refresh calendar data
-            if (window.parent.courseCalendar) {
-                window.parent.courseCalendar.loadCalendarData();
-            }
-        } else {
-            // Navigate to my bookings
-            window.location.href = '@Url.Action("MyBookings")';
-        }
-    }
 </script>

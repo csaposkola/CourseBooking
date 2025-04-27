@@ -6,128 +6,97 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using DotNetNuke.Common.Utilities;
+using DotNetNuke.Security; // For Requires
+using DotNetNuke.Services.Exceptions; // For Exceptions logging
 
 namespace CourseBooking.Controllers.Api
 {
     public class CourseApiController : DnnApiController
     {
-        private IBookingService _bookingService;
+        private readonly IBookingService _bookingService;
 
-        // Direct constructor instantiation with try-catch for safety
-        public CourseApiController()
+        // Constructor without DI
+        public CourseApiController() : this(new BookingService())
         {
-            try
-            {
-                // Try to initialize service in constructor
-                TryInitializeService();
-            }
-            catch (Exception ex)
-            {
-                // Log but don't fail constructor
-                DotNetNuke.Services.Exceptions.Exceptions.LogException(ex);
-            }
         }
 
-        private void TryInitializeService(int explicitModuleId = -1)
+        // Constructor for potential DI
+        public CourseApiController(IBookingService bookingService)
         {
-            try
-            {
-                int moduleId = explicitModuleId;
-                int portalId = -1;
+             _bookingService = bookingService ?? throw new ArgumentNullException(nameof(bookingService));
 
-                // First try with explicit moduleId if provided
-                if (explicitModuleId > 0)
-                {
-                    portalId = PortalSettings?.PortalId ?? 0;
-                    _bookingService = new BookingService(explicitModuleId, portalId);
-                    return;
-                }
-
-                // Try to get module id from ActiveModule
-                if (ActiveModule != null && PortalSettings != null)
-                {
-                    _bookingService = new BookingService(ActiveModule.ModuleID, PortalSettings.PortalId);
-                    return;
-                }
-
-                // Try from request context
-                moduleId = -1;
-                portalId = -1;
-
-                var request = Request;
-                if (request != null)
-                {
-                    // Try from query string
-                    if (request.GetQueryNameValuePairs().Any(p => p.Key.Equals("moduleid", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        string moduleIdValue = request.GetQueryNameValuePairs()
-                            .First(p => p.Key.Equals("moduleid", StringComparison.OrdinalIgnoreCase)).Value;
-                        
-                        if (!string.IsNullOrEmpty(moduleIdValue) && int.TryParse(moduleIdValue, out int mid))
-                        {
-                            moduleId = mid;
-                        }
-                    }
-                }
-
-                // Try from HTTP context
-                if (moduleId <= 0)
-                {
-                    var httpContext = System.Web.HttpContext.Current;
-                    if (httpContext != null)
-                    {
-                        var mid = httpContext.Request.QueryString["moduleid"];
-                        if (!string.IsNullOrEmpty(mid) && int.TryParse(mid, out int parsedModuleId))
-                        {
-                            moduleId = parsedModuleId;
-                        }
-                    }
-                }
-
-                // Set portal ID
-                if (PortalSettings != null)
-                {
-                    portalId = PortalSettings.PortalId;
-                }
-                else
-                {
-                    // Final fallback to default portal (0)
-                    portalId = 0;
-                }
-
-                // Initialize service if we have valid IDs
-                if (moduleId > 0 && portalId >= 0)
-                {
-                    _bookingService = new BookingService(moduleId, portalId);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Just log the error, don't throw
-                DotNetNuke.Services.Exceptions.Exceptions.LogException(
-                    new InvalidOperationException($"Error initializing service: Mid={explicitModuleId}", ex));
-            }
+             // REMOVED THE CALL TO TrySetServiceContext() FROM THE CONSTRUCTOR
+             // TrySetServiceContext();
         }
 
-        protected IBookingService BookingService
+        // REMOVED THE TrySetServiceContext() method completely as it's no longer needed or safe here.
+        /*
+        private void TrySetServiceContext()
         {
-            get
-            {
-                if (_bookingService == null)
-                {
-                    // Try to initialize if null
-                    TryInitializeService();
+             try
+             {
+                 // ... code removed ...
+             }
+             catch (Exception ex)
+             {
+                 Exceptions.LogException(new InvalidOperationException("Failed to set context in CourseApiController.", ex));
+             }
+        }
+        */
+
+        // Refined GetCurrentModuleId - prioritizes ActiveModule (if available at action time), then Headers, then QueryString
+        private int GetCurrentModuleId(int explicitModuleId = -1)
+        {
+            // 1. Use explicit ID if provided and valid
+            if (explicitModuleId > 0) return explicitModuleId;
+
+            // 2. Try ActiveModule (Often available when the ACTION executes)
+            // Access ActiveModule safely via DnnApiController properties
+            if (ActiveModule != null && ActiveModule.ModuleID > 0) return ActiveModule.ModuleID;
+
+            // 3. Try Request Headers (Reliable for AJAX calls if set by client)
+            var request = Request; // Get request object safely from the controller property
+            if (request?.Headers.Contains("ModuleId") == true) {
+                var moduleIdHeader = request.Headers.GetValues("ModuleId").FirstOrDefault();
+                if (int.TryParse(moduleIdHeader, out int moduleIdFromHeader) && moduleIdFromHeader > 0) {
+                    return moduleIdFromHeader;
                 }
-                return _bookingService;
             }
+
+            // 4. Try Request Query String (Good for direct GET API calls)
+            if (request != null) {
+                var queryParams = request.GetQueryNameValuePairs();
+                var moduleIdPair = queryParams.FirstOrDefault(p => p.Key.Equals("moduleid", StringComparison.OrdinalIgnoreCase));
+                if (moduleIdPair.Key != null && int.TryParse(moduleIdPair.Value, out int mid) && mid > 0) {
+                    return mid;
+                }
+            }
+
+            // 5. Fallback to HttpContext Query String (Less ideal for API)
+            var httpContext = System.Web.HttpContext.Current;
+            if (httpContext != null)
+            {
+                var midStr = httpContext.Request.QueryString["moduleid"];
+                if (!string.IsNullOrEmpty(midStr) && int.TryParse(midStr, out int mid) && mid > 0)
+                {
+                    return mid;
+                }
+            }
+
+            // Could not determine ModuleId - Log the failure
+            Exceptions.LogException(new InvalidOperationException("CourseApiController could not determine ModuleId from context, headers, or parameters."));
+            return -1;
         }
 
+
+        // Check service instance exists.
         private bool IsServiceAvailable(out HttpResponseMessage errorResponse)
         {
-            if (BookingService == null) 
+            if (_bookingService == null)
             {
-                errorResponse = Request.CreateErrorResponse(HttpStatusCode.InternalServerError, 
-                    "Service unavailable. Please provide moduleId parameter.");
+                errorResponse = Request.CreateErrorResponse(HttpStatusCode.InternalServerError,
+                    "Booking service is unavailable."); // Keep message in English for API consistency? Or use localized resource.
                 return false;
             }
             errorResponse = null;
@@ -135,18 +104,18 @@ namespace CourseBooking.Controllers.Api
         }
 
         [HttpGet]
-        [AllowAnonymous]
+        [AllowAnonymous] // Keep anonymous unless login is required to see schedules
         public HttpResponseMessage GetCourseSchedules(int year, int month, int moduleId = -1)
         {
-            // Try initializing the service with explicit moduleId
-            if (moduleId > 0 && _bookingService == null)
+            if (!IsServiceAvailable(out var serviceErrorResponse))
             {
-                TryInitializeService(moduleId);
+                return serviceErrorResponse;
             }
 
-            if (!IsServiceAvailable(out var errorResponse))
+            int currentModuleId = GetCurrentModuleId(moduleId); // Use the refined GetCurrentModuleId
+            if (currentModuleId <= 0)
             {
-                return errorResponse;
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Module context could not be determined. Please provide a valid 'moduleId' parameter or ensure the request includes it correctly.");
             }
 
             if (year < 1900 || year > 2100 || month < 1 || month > 12)
@@ -157,27 +126,27 @@ namespace CourseBooking.Controllers.Api
             try
             {
                 var startDate = new DateTime(year, month, 1);
-                var endDate = startDate.AddMonths(1).AddDays(-1);
+                // Ensure endDate captures the *entire* last day of the month in UTC
+                var endDate = startDate.AddMonths(1).AddTicks(-1); // End of the month
 
-                // Get only active schedules for public view
-                var schedules = BookingService.GetCourseSchedules(startDate, endDate, includeInactive: false);
+                // Call service method with the determined ModuleId
+                var schedules = _bookingService.GetCourseSchedules(currentModuleId, startDate.ToUniversalTime(), endDate.ToUniversalTime(), includeInactive: false);
 
-                // Determine user's registered schedules if logged in
                 HashSet<int> userRegisteredScheduleIds = null;
+                // Use UserInfo property from DnnApiController
                 if (UserInfo != null && UserInfo.UserID > 0)
                 {
-                    userRegisteredScheduleIds = BookingService.GetBookingsByUser(UserInfo.UserID)
+                    userRegisteredScheduleIds = _bookingService.GetBookingsByUser(UserInfo.UserID, currentModuleId)
                         .Where(b => !b.IsCancelled)
                         .Select(b => b.CourseScheduleID)
                         .ToHashSet();
                 }
 
-                // Create simplified response with only necessary data
                 var responseSchedules = schedules.Select(s => new
                 {
                     s.ID,
                     s.CoursePlanID,
-                    s.StartTime,
+                    StartTime = s.StartTime, // Keep as UTC DateTime for consistency in API response
                     s.AvailableSeats,
                     s.IsActive,
                     CoursePlanName = s.CoursePlan?.Name ?? "Unknown Course",
@@ -191,40 +160,71 @@ namespace CourseBooking.Controllers.Api
             }
             catch (Exception ex)
             {
-                DotNetNuke.Services.Exceptions.Exceptions.LogException(ex);
-                return Request.CreateErrorResponse(HttpStatusCode.InternalServerError, 
+                Exceptions.LogException(ex);
+                return Request.CreateErrorResponse(HttpStatusCode.InternalServerError,
                     "An error occurred retrieving course schedules: " + ex.Message);
             }
         }
 
+        // This AdminCancelBooking method requires Edit permissions
         [HttpPost]
-        [DnnAuthorize(StaticRoles = "Administrators")]
+        [DnnModuleAuthorize(AccessLevel = SecurityAccessLevel.Edit)]
         [ValidateAntiForgeryToken]
         public HttpResponseMessage AdminCancelBooking([FromBody] CancelBookingRequest cancelRequest)
         {
-            if (!IsServiceAvailable(out var errorResponse)) return errorResponse;
+            if (!IsServiceAvailable(out var serviceErrorResponse)) return serviceErrorResponse;
+
+            // Determine ModuleId using the request body value first, then context
+            int currentModuleId = GetCurrentModuleId(cancelRequest?.ModuleId ?? -1);
+             if (currentModuleId <= 0)
+             {
+                 return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Module context could not be determined for cancellation.");
+             }
 
             if (cancelRequest == null || cancelRequest.BookingId <= 0)
             {
-                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Invalid cancellation request.");
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Invalid cancellation request. Missing BookingId.");
             }
 
             try
             {
-                BookingService.CancelBooking(cancelRequest.BookingId);
-                return Request.CreateResponse(HttpStatusCode.OK, new { Success = true, Message = "Booking cancelled by admin." });
+                bool cancelled = _bookingService.CancelBooking(cancelRequest.BookingId, currentModuleId);
+                if (cancelled)
+                {
+                     return Request.CreateResponse(HttpStatusCode.OK, new { Success = true, Message = "Booking cancelled by admin." });
+                }
+                else
+                {
+                    return Request.CreateErrorResponse(HttpStatusCode.NotFound, "Booking not found or could not be cancelled (it might already be cancelled or belong to another module instance).");
+                }
+            }
+            catch (BookingException bex)
+            {
+                 Exceptions.LogException(bex);
+                 return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Cancellation failed: " + bex.Message);
             }
             catch (Exception ex)
             {
-                DotNetNuke.Services.Exceptions.Exceptions.LogException(ex);
-                return Request.CreateErrorResponse(HttpStatusCode.InternalServerError, 
-                    "An error occurred during cancellation: " + ex.Message);
+                Exceptions.LogException(ex);
+                return Request.CreateErrorResponse(HttpStatusCode.InternalServerError, "An error occurred during cancellation: " + ex.Message);
             }
         }
 
+        // Request model for cancellation
         public class CancelBookingRequest
         {
             public int BookingId { get; set; }
+            public int ModuleId { get; set; } = -1; // Optional: Client can provide ModuleId context
         }
+
+        // Placeholder for SendReminders if needed
+        /*
+        [HttpPost]
+        [DnnModuleAuthorize(AccessLevel = SecurityAccessLevel.Edit)]
+        [ValidateAntiForgeryToken]
+        public HttpResponseMessage SendReminders([FromBody] ReminderRequest reminderRequest) { ... }
+
+        public class ReminderRequest { ... }
+        */
     }
 }
