@@ -3,12 +3,18 @@
 @inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage
 
 @{
-    var moduleContext = Dnn.ModuleContext;
+var moduleContext = Dnn.ModuleContext;
+var moduleId = moduleContext.ModuleId;
 
-    // Request required scripts
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
-    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+// Request required scripts
+DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+
+// Initialize variables that might be null with safe defaults
+var isAdmin = ViewBag.IsAdmin as bool? ?? false;
+var currentYear = ViewBag.CurrentYear ?? DateTime.Now.Year;
+var currentMonth = ViewBag.CurrentMonth ?? DateTime.Now.Month;
 }
 
 <div class="csaposkola-course-calendar">
@@ -38,16 +44,16 @@
                 <select id="jumpToYear" class="form-control">
                     @for (int year = DateTime.Now.Year; year <= DateTime.Now.Year + 2; year++)
                     {
-                        <option value="@year">@year</option>
+                    <option value="@year">@year</option>
                     }
                 </select>
                 <button type="button" id="jumpToDate" class="btn btn-primary">Go</button>
 
                 @if (Request.IsAuthenticated)
                 {
-                    <button type="button" id="viewMyBookings" class="btn btn-info">
-                        <i class="fa fa-list"></i> Foglalásaim
-                    </button>
+                <button type="button" id="viewMyBookings" class="btn btn-info">
+                    <i class="fa fa-list"></i> Foglalásaim
+                </button>
                 }
             </div>
         </div>
@@ -56,18 +62,18 @@
     <div class="calendar-body">
         <table class="calendar-table">
             <thead>
-                <tr>
-                    <th>Hétfő</th>
-                    <th>Kedd</th>
-                    <th>Szerda</th>
-                    <th>Csütörtök</th>
-                    <th>Péntek</th>
-                    <th>Szombat</th>
-                    <th>Vasárnap</th>
-                </tr>
+            <tr>
+                <th>Hétfő</th>
+                <th>Kedd</th>
+                <th>Szerda</th>
+                <th>Csütörtök</th>
+                <th>Péntek</th>
+                <th>Szombat</th>
+                <th>Vasárnap</th>
+            </tr>
             </thead>
             <tbody id="calendarGrid">
-                <!-- Calendar days will be rendered here by JavaScript -->
+            <!-- Calendar days will be rendered here by JavaScript -->
             </tbody>
         </table>
     </div>
@@ -81,27 +87,20 @@
 </div>
 
 @{
-    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
-    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/Scripts/calendar.js");
-    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/Scripts/ajaxHandler.js");
+ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
+ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/Scripts/calendar.js");
 }
 
 <script type="text/javascript">
     $(document).ready(function () {
-        var sf = $.ServicesFramework(@moduleContext.ModuleId);
+        var sf = $.ServicesFramework(@moduleId);
 
-        // Initialize Ajax Handler
-        CourseBookingAjax.initialize({
-            moduleId: @moduleContext.ModuleId,
-            tabId: @Dnn.ActiveModule.TabID
-        });
-        
-        // Initialize Calendar
+        // Initialize Calendar - Make sure moduleId is passed correctly
         window.courseCalendar = new CourseCalendar({
-            moduleId: @moduleContext.ModuleId,
-            initialYear: @ViewBag.CurrentYear,
-            initialMonth: @ViewBag.CurrentMonth,
-            isAdmin: @(ViewBag.IsAdmin ? "true" : "false"),
+            moduleId: @moduleId,
+            initialYear: @currentYear,
+            initialMonth: @currentMonth,
+            isAdmin: @(isAdmin.ToString().ToLower()),
             userId: @(Request.IsAuthenticated ? Dnn.User.UserID.ToString() : "0"),
             apiUrl: sf.getServiceRoot('CourseBooking') + 'CourseApi/',
             detailsUrl: '@Url.Action("Details", "Calendar")',
@@ -110,29 +109,19 @@
         });
 
         window.courseCalendar.initialize();
-        
-        // Initialize modal handlers for the page
-        CourseBookingAjax.initializeFormHandlers(document);
-        
-        // Update calendar.js to use modals for schedule details
+
+        // Update calendar.js to use direct links for schedule details
         $(document).on('click', '.time-slot', function(e) {
-            e.preventDefault();
-            var url = $(this).attr('href');
-            var title = $(this).attr('title') || 'Tanfolyam részletek';
-            
-            CourseBookingAjax.openModalUrl(url, title, {
-                width: 800,
-                height: 600
-            });
+            if ($(this).hasClass('past')) {
+                e.preventDefault();
+                return false;
+            }
         });
-        
+
         // Handle "My Bookings" button click
         $('#viewMyBookings').click(function(e) {
             e.preventDefault();
-            CourseBookingAjax.openModalUrl('@Url.Action("MyBookings", "Calendar")', 'Foglalásaim', {
-                width: 900,
-                height: 600
-            });
+            window.location.href = '@Url.Action("MyBookings", "Calendar")';
         });
     });
 </script>

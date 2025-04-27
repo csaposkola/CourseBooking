@@ -8,6 +8,8 @@ using DotNetNuke.Framework.JavaScriptLibraries;
 using DotNetNuke.Services.Exceptions;
 using DotNetNuke.Web.Mvc.Framework.ActionFilters;
 using DotNetNuke.Web.Mvc.Framework.Controllers;
+using DotNetNuke.Security;
+using DotNetNuke.Security.Permissions;
 
 namespace CourseBooking.Controllers
 {
@@ -60,6 +62,12 @@ namespace CourseBooking.Controllers
             // Pass context info needed by the view/JS
             ViewBag.ModuleId = ModuleContext.Configuration.ModuleID;
             ViewBag.UserId = User?.UserID ?? 0;
+            
+            // Explicitly set IsAdmin to prevent null value errors
+            ViewBag.IsAdmin = User != null && 
+                (User.IsInRole(PortalSettings.AdministratorRoleName) || 
+                 ModulePermissionController.HasModulePermission(ModuleContext.Configuration.ModulePermissions, "EDIT"));
+                
             ViewBag.InitialLocale = System.Threading.Thread.CurrentThread.CurrentUICulture.Name;
 
             // Pass any messages from TempData to ViewBag for the view
@@ -185,12 +193,12 @@ namespace CourseBooking.Controllers
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
         [Authorize] // User must be logged in
-        public ActionResult Cancel(int bookingId)
+        public ActionResult Cancel(int id)
         {
              if (!EnsureServiceAvailable()) return RedirectToAction("MyBookings");
 
             // Retrieve booking first to check ownership and existence
-            var booking = _bookingService.GetBookingById(bookingId);
+            var booking = _bookingService.GetBookingById(id);
              if (booking == null)
              {
                  TempData["ErrorMessage"] = "Booking not found.";
@@ -199,14 +207,14 @@ namespace CourseBooking.Controllers
              
              if (booking.UserID != User.UserID && !User.IsAdmin)
              {
-                 Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to cancel booking {bookingId} owned by user {booking.UserID}."));
+                 Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to cancel booking {id} owned by user {booking.UserID}."));
                  TempData["ErrorMessage"] = "You do not have permission to cancel this booking.";
                  return RedirectToAction("MyBookings");
              }
 
             try
             {
-                _bookingService.CancelBooking(bookingId);
+                _bookingService.CancelBooking(id);
                 TempData["SuccessMessage"] = "Booking cancelled successfully.";
                 return RedirectToAction("MyBookings"); // Show updated list
             }
