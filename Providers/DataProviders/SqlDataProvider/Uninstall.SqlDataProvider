@@ -1,23 +1,18 @@
 ﻿/* Uninstall SQL script for CourseBooking module */
 
-/* Drop notifications table */
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseNotifications]') AND type in (N'U'))
-BEGIN
-    DROP TABLE {databaseOwner}[{objectQualifier}CourseNotifications]
-END
-GO
-
-/* Drop participants table */
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseParticipants]') AND type in (N'U'))
-BEGIN
-    DROP TABLE {databaseOwner}[{objectQualifier}CourseParticipants]
-END
-GO
+/* Drop dependencies first */
 
 /* Drop bookings table */
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseBookings]') AND type in (N'U'))
 BEGIN
     DROP TABLE {databaseOwner}[{objectQualifier}CourseBookings]
+END
+GO
+
+/* Drop schedules table */
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseSchedules]') AND type in (N'U'))
+BEGIN
+    DROP TABLE {databaseOwner}[{objectQualifier}CourseSchedules]
 END
 GO
 

@@ -7,20 +7,22 @@
 @inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<CourseScheduleEntity>
 
 @{
-    // Dependencies (jQuery, jQuery UI, module CSS) should be loaded by the parent view/theme.
-    // DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport(); // Should be requested by parent view
+// Request required scripts
+DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
 
-    var localStartTime = Model.StartTime.ToLocalTime();
-    var localEndTime = Model.EndTime.ToLocalTime();
-    var isRegistered = ViewBag.IsRegistered as bool? ?? false;
-    var userBooking = ViewBag.UserBooking as BookingEntity;
-    var canRegister = ViewBag.CanRegister as bool? ?? false;
-    var isAjax = Request.QueryString["isAjax"] == "true" || Request.IsAjaxRequest();
+var localStartTime = Model.StartTime.ToLocalTime();
+var localEndTime = Model.EndTime.ToLocalTime();
+var isRegistered = ViewBag.IsRegistered as bool? ?? false;
+var userBooking = ViewBag.UserBooking as BookingEntity;
+var canRegister = ViewBag.CanRegister as bool? ?? false;
+var isAjax = Request.QueryString["isAjax"] == "true" || Request.IsAjaxRequest();
 
-    if (isAjax)
-    {
-        Layout = null; // Use no layout for AJAX modal content
-    }
+if (isAjax)
+{
+Layout = null; // Use no layout for AJAX modal content
+}
 }
 
 @* Ensure this top-level div has the class used in ajaxHandler.js for content extraction *@
@@ -29,13 +31,13 @@
     @* Display TempData errors if redirected here after a non-AJAX error *@
     @if (TempData["ErrorMessage"] != null)
     {
-        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
     }
 
     <div class="booking-details-container booking-details-stacked">
         <div class="booking-section full-width">
             <h3>Mit kell tudni a tanfolyamról?</h3>
-             @* Using form-horizontal for consistent layout *@
+            @* Using form-horizontal for consistent layout *@
             <div class="form-horizontal">
                 <div class="form-group">
                     <label class="control-label col-md-4">Tanfolyam neve</label>
@@ -89,201 +91,194 @@
                 <div class="form-group">
                     <label class="control-label col-md-4">Leírás</label>
                     <div class="col-md-8">
-                        @* Use @Html.Raw if description might contain HTML *@
                         <div class="form-control-static">@Html.Raw(Model.CoursePlan.Description)</div>
                     </div>
                 </div>
 
                 @if (!string.IsNullOrEmpty(Model.CoursePlan.PrerequisiteIds))
                 {
-                    <div class="form-group">
-                        <label class="control-label col-md-4">Előfeltételek</label>
-                        <div class="col-md-8">
-                            <p class="form-control-static">@Model.CoursePlan.PrerequisiteIds</p>
-                        </div>
+                <div class="form-group">
+                    <label class="control-label col-md-4">Előfeltételek</label>
+                    <div class="col-md-8">
+                        <p class="form-control-static">@Model.CoursePlan.PrerequisiteIds</p>
                     </div>
+                </div>
                 }
             </div> @* end form-horizontal *@
         </div>
 
         @if (isRegistered && userBooking != null)
         {
-            <div class="booking-section full-width">
-                <h3>Az Ön foglalása</h3>
-                 <div class="form-horizontal">
-                    <div class="form-group">
-                        <label class="control-label col-md-4">Foglalás azonosító</label>
-                        <div class="col-md-8">
-                            <p class="form-control-static">@userBooking.ID</p>
-                        </div>
+        <div class="booking-section full-width">
+            <h3>Az Ön foglalása</h3>
+            <div class="form-horizontal">
+                <div class="form-group">
+                    <label class="control-label col-md-4">Foglalás azonosító</label>
+                    <div class="col-md-8">
+                        <p class="form-control-static">@userBooking.ID</p>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label class="control-label col-md-4">Foglalás ideje</label>
-                        <div class="col-md-8">
-                            <p class="form-control-static">@userBooking.BookingTime.ToLocalTime().ToString("yyyy. MM. dd. HH:mm")</p>
-                        </div>
+                <div class="form-group">
+                    <label class="control-label col-md-4">Foglalás ideje</label>
+                    <div class="col-md-8">
+                        <p class="form-control-static">@userBooking.BookingTime.ToLocalTime().ToString("yyyy. MM. dd. HH:mm")</p>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label class="control-label col-md-4">Állapot</label>
-                        <div class="col-md-8">
-                            <p class="form-control-static @(userBooking.IsCancelled ? "text-danger" : "text-success")">
-                                @(userBooking.IsCancelled ? "Lemondva" : "Aktív")
-                            </p>
-                        </div>
+                <div class="form-group">
+                    <label class="control-label col-md-4">Állapot</label>
+                    <div class="col-md-8">
+                        <p class="form-control-static @(userBooking.IsCancelled ? "text-danger" : "text-success")">
+                            @(userBooking.IsCancelled ? "Lemondva" : "Aktív")
+                        </p>
                     </div>
+                </div>
 
-                    @if (!string.IsNullOrEmpty(userBooking.VoucherCode))
-                    {
-                        <div class="form-group">
-                            <label class="control-label col-md-4">Kupon kód</label>
-                            <div class="col-md-8">
-                                <div class="input-group" style="max-width: 250px;">
-                                    <span class="form-control" id="voucherCode" style="background-color: #eee;">@userBooking.VoucherCode</span>
-                                    <span class="input-group-btn">
+                @if (!string.IsNullOrEmpty(userBooking.VoucherCode))
+                {
+                <div class="form-group">
+                    <label class="control-label col-md-4">Kupon kód</label>
+                    <div class="col-md-8">
+                        <div class="input-group" style="max-width: 250px;">
+                            <span class="form-control" id="voucherCode" style="background-color: #eee;">@userBooking.VoucherCode</span>
+                            <span class="input-group-btn">
                                         <button type="button" id="copyVoucher" class="btn btn-default" title="Kód másolása">
                                             <i class="fa fa-copy"></i>
                                         </button>
                                     </span>
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    <div class="form-group">
-                        <label class="control-label col-md-4">Fizetési állapot</label>
-                        <div class="col-md-8">
-                            <p class="form-control-static">@userBooking.PaymentStatus</p> @* Consider adding CSS class based on status *@
                         </div>
                     </div>
-                </div> @* end form-horizontal *@
-            </div>
+                </div>
+                }
+
+                <div class="form-group">
+                    <label class="control-label col-md-4">Fizetési állapot</label>
+                    <div class="col-md-8">
+                        <p class="form-control-static">@userBooking.PaymentStatus</p>
+                    </div>
+                </div>
+            </div> @* end form-horizontal *@
+        </div>
         }
         else if (Request.IsAuthenticated && canRegister)
         {
-            <div class="registration-section full-width">
-                <h3>Foglalás</h3>
+        <div class="registration-section full-width">
+            <h3>Foglalás</h3>
 
-                @* --- AJAX Enabled Form --- *@
-                <form id="bookingForm"
-                      action="@Url.Action("Register", "Calendar")"
-                      method="post"
-                      class="form-horizontal"
-                      role="form"
-                      data-ajax="true" @* Tells ajaxHandler to handle this form *@
-                      data-success-callback="handleBookingSuccess" @* JS function to call on success *@
-                      > @* Optional: data-error-callback="onAjaxError" *@
+            @* --- AJAX Enabled Form --- *@
+            <form id="bookingForm"
+                  action="@Url.Action("Register", "Calendar")"
+                  method="post"
+                  class="form-horizontal"
+                  role="form"
+                  data-ajax="true"
+                  data-success-callback="handleBookingSuccess">
 
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@Model.ID" />
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.ID" />
 
-                    <div class="form-group">
-                        <label for="bookingNotes" class="control-label col-md-4">Megjegyzés (opcionális)</label>
-                        <div class="col-md-8">
-                            <textarea id="bookingNotes" name="notes" class="form-control" rows="3"></textarea>
-                        </div>
+                <div class="form-group">
+                    <label for="bookingNotes" class="control-label col-md-4">Megjegyzés (opcionális)</label>
+                    <div class="col-md-8">
+                        <textarea id="bookingNotes" name="notes" class="form-control" rows="3"></textarea>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <div class="col-md-offset-4 col-md-8">
-                            <button type="submit" id="submitBooking" class="btn btn-primary btn-lg">Foglalás véglegesítése</button>
-                        </div>
+                <div class="form-group">
+                    <div class="col-md-offset-4 col-md-8">
+                        <button type="submit" id="submitBooking" class="btn btn-primary btn-lg">Foglalás véglegesítése</button>
                     </div>
-                </form>
-            </div>
+                </div>
+            </form>
+        </div>
         }
         else if (!Request.IsAuthenticated)
         {
-            <div class="registration-message full-width">
-                <div class="alert alert-info">
-                    <strong>Figyelem!</strong> A foglaláshoz <a href="@DotNetNuke.Common.Globals.NavigateURL(Dnn.PortalSettings.LoginTabId)">be kell jelentkeznie</a>.
-                </div>
+        <div class="registration-message full-width">
+            <div class="alert alert-info">
+                <strong>Figyelem!</strong> A foglaláshoz <a href="@DotNetNuke.Common.Globals.NavigateURL(Dnn.PortalSettings.LoginTabId)">be kell jelentkeznie</a>.
             </div>
+        </div>
         }
         else if (Model.RemainingSeats <= 0)
         {
-            <div class="registration-message full-width">
-                <div class="alert alert-warning">
-                    <strong>Sajnáljuk!</strong> Erre a tanfolyamra már minden hely betelt.
-                </div>
+        <div class="registration-message full-width">
+            <div class="alert alert-warning">
+                <strong>Sajnáljuk!</strong> Erre a tanfolyamra már minden hely betelt.
             </div>
+        </div>
         }
-        else if (isRegistered) // Already registered, show message (redundant if first section shows details, but covers edge cases)
+        else if (isRegistered)
         {
-             if (userBooking == null || !userBooking.IsCancelled) {
-                 <div class="registration-message full-width">
-                     <div class="alert alert-info">
-                         <strong>Információ:</strong> Ön már regisztrált erre a tanfolyamra. A foglalás részleteit fentebb láthatja.
-                     </div>
-                 </div>
-            } else if (userBooking != null && userBooking.IsCancelled) {
-                 <div class="registration-message full-width">
-                     <div class="alert alert-warning">
-                         <strong>Információ:</strong> Ön korábban lemondta a foglalását erre a tanfolyamra. @* Consider adding re-booking logic if needed *@
-                     </div>
-                 </div>
-            }
+        if (userBooking == null || !userBooking.IsCancelled) {
+        <div class="registration-message full-width">
+            <div class="alert alert-info">
+                <strong>Információ:</strong> Ön már regisztrált erre a tanfolyamra. A foglalás részleteit fentebb láthatja.
+            </div>
+        </div>
+        } else if (userBooking != null && userBooking.IsCancelled) {
+        <div class="registration-message full-width">
+            <div class="alert alert-warning">
+                <strong>Információ:</strong> Ön korábban lemondta a foglalását erre a tanfolyamra.
+            </div>
+        </div>
         }
-        else if (!canRegister) { // Other reasons (e.g., prerequisites missing, date passed)
-            <div class="registration-message full-width">
-                 <div class="alert alert-warning">
-                     <strong>Információ:</strong> Jelenleg nem tud jelentkezni erre a tanfolyamra. @* Provide more specific reason if possible *@
-                 </div>
-             </div>
+        }
+        else if (!canRegister) {
+        <div class="registration-message full-width">
+            <div class="alert alert-warning">
+                <strong>Információ:</strong> Jelenleg nem tud jelentkezni erre a tanfolyamra.
+            </div>
+        </div>
         }
     </div>
 
     <div class="booking-actions text-right" style="padding: 15px; border-top: 1px solid #eee; margin-top: 15px;">
-        @if (isRegistered && userBooking != null && !userBooking.IsCancelled && Model.StartTime > DateTime.UtcNow.AddHours(24)) // Allow cancellation > 24h before start
+        @if (isRegistered && userBooking != null && !userBooking.IsCancelled && Model.StartTime > DateTime.UtcNow.AddHours(24))
         {
-            @* --- AJAX Enabled Cancel Form --- *@
-            <form action="@Url.Action("Cancel", "Calendar", new { id = userBooking.ID })"
-                  method="post"
-                  class="cancel-form"
-                  style="display: inline-block; margin-right: 10px;"
-                  data-ajax="true" @* Tells ajaxHandler to handle this form *@
-                  data-success-callback="onCancelSuccess" @* JS function to call on success *@
-                  data-error-callback="onAjaxError" @* JS function to call on error *@
-                  onsubmit="return confirm('Biztosan lemondja a foglalást?');">
+        <form action="@Url.Action("Cancel", "Calendar", new { id = userBooking.ID })"
+              method="post"
+              class="cancel-form"
+              style="display: inline-block; margin-right: 10px;"
+              data-ajax="true"
+              data-success-callback="onCancelSuccess"
+              data-error-callback="onAjaxError"
+              onsubmit="return confirm('Biztosan lemondja a foglalást?');">
 
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-danger">Foglalás lemondása</button>
-            </form>
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger">Foglalás lemondása</button>
+        </form>
         }
 
-        @* This button's click handler is initialized by ajaxHandler.js inside the modal *@
         <button type="button" class="btn btn-default modal-close">Bezárás</button>
     </div>
 </div>
 
-@*
-    Define JavaScript callback functions globally so they can be found by name
-    These are executed by ajaxHandler.js based on the data-*-callback attributes
-*@
-<script type="text/javascript">
-    // Ensure these functions are globally accessible if used by data-success-callback/data-error-callback
+@{
+// Register required scripts
+ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/Scripts/ajaxHandler.js");
+}
 
-    function handleBookingSuccess(response) {
+<script type="text/javascript">
+    // Make functions global so they can be found by the callbacks
+    window.handleBookingSuccess = function(response) {
         console.log("Handling booking success", response);
 
         // Close the current details/booking modal first
         if (window.parent && window.parent.closeModal) {
-             // Use the close function defined in the parent's ajaxHandler
-             window.parent.closeModal();
+            window.parent.closeModal();
         } else {
-             console.warn("Cannot find parent modal handler to close automatically.");
-             // Fallback attempt (less reliable)
-             try { window.parent.jQuery('#courseBookingModal').dialog('close'); } catch(e){}
+            try { window.parent.jQuery('#courseBookingModal').dialog('close'); } catch(e){}
         }
 
         var bookingId = (response && response.ID) ? response.ID : '';
         if (!bookingId) {
             console.error("Booking successful, but no Booking ID received in response:", response);
             alert("A foglalás sikeres volt, de hiba történt a visszaigazolás megjelenítése közben.");
-            // Refresh parent data even if confirmation fails
+
             if (window.parent && typeof window.parent.refreshCourseData === 'function') {
-                 window.parent.refreshCourseData();
+                window.parent.refreshCourseData();
             } else if (window.parent && window.parent.courseCalendar && typeof window.parent.courseCalendar.loadCalendarData === 'function') {
                 window.parent.courseCalendar.loadCalendarData();
             }
@@ -293,77 +288,69 @@
         var confirmationUrl = '@Url.Action("Confirmation", "Calendar")';
         var finalUrl = confirmationUrl + '?id=' + bookingId + '&isAjax=true';
 
-        // Use the parent's modal opener
         if (window.parent && window.parent.CourseBookingAjax) {
-            console.log("Opening confirmation in parent modal:", finalUrl);
-            // Use a slight delay to ensure the previous modal is fully closed visually
             setTimeout(function() {
                 window.parent.CourseBookingAjax.openModalUrl(
                     finalUrl,
                     'Foglalás visszaigazolása',
-                    { width: 800, height: 600 } // Adjust size as needed
+                    { width: 800, height: 600 }
                 );
-                // Refresh calendar data in the parent *after* opening confirmation
+
                 if (window.parent && window.parent.courseCalendar && typeof window.parent.courseCalendar.loadCalendarData === 'function') {
-                     console.log("Refreshing parent calendar data after booking.");
-                     window.parent.courseCalendar.loadCalendarData();
+                    window.parent.courseCalendar.loadCalendarData();
                 } else if (window.parent && typeof window.parent.refreshCourseData === 'function') {
-                     console.log("Calling parent refreshCourseData function after booking.");
-                     window.parent.refreshCourseData();
+                    window.parent.refreshCourseData();
                 }
-             }, 150); // 150ms delay
-
-        } else { // Fallback if parent/modal handler not found
-            console.log("Redirecting to confirmation page:", finalUrl);
-            window.location.href = confirmationUrl + '?id=' + bookingId; // Non-ajax version for redirect
-        }
-    }
-
-    function onCancelSuccess(response) {
-        console.log("Handling cancel success", response);
-        alert('A foglalást sikeresen lemondta.'); // Give feedback
-
-        // Close the modal using the parent's handler
-        if (window.parent && window.parent.closeModal) {
-             window.parent.closeModal();
+            }, 150);
         } else {
-            console.warn("Cannot find parent modal handler to close automatically after cancellation.");
-             // Fallback attempt (less reliable)
-             try { window.parent.jQuery('#courseBookingModal').dialog('close'); } catch(e){}
+            window.location.href = confirmationUrl + '?id=' + bookingId;
+        }
+    };
+
+    window.onCancelSuccess = function(response) {
+        console.log("Handling cancel success", response);
+        alert('A foglalást sikeresen lemondta.');
+
+        if (window.parent && window.parent.closeModal) {
+            window.parent.closeModal();
+        } else {
+            try { window.parent.jQuery('#courseBookingModal').dialog('close'); } catch(e){}
         }
 
-        // Refresh parent calendar data
-         if (window.parent && window.parent.courseCalendar && typeof window.parent.courseCalendar.loadCalendarData === 'function') {
-             console.log("Refreshing parent calendar data after cancellation.");
-             window.parent.courseCalendar.loadCalendarData();
-         } else if (window.parent && typeof window.parent.refreshCourseData === 'function') {
-             console.log("Calling parent refreshCourseData function after cancellation.");
-             window.parent.refreshCourseData();
-         } else {
-            console.warn("Could not find parent calendar refresh function.");
-         }
-    }
+        if (window.parent && window.parent.courseCalendar && typeof window.parent.courseCalendar.loadCalendarData === 'function') {
+            window.parent.courseCalendar.loadCalendarData();
+        } else if (window.parent && typeof window.parent.refreshCourseData === 'function') {
+            window.parent.refreshCourseData();
+        }
+    };
 
-     function onAjaxError(xhr, status, error) {
-         console.error("AJAX Error in Modal:", { status: status, error: error, response: xhr.responseText });
-         var errorMsg = 'Hiba történt a kérés feldolgozása során.';
-          try {
-              // Try to parse JSON response for a specific error message
-              var responseJson = JSON.parse(xhr.responseText);
-              if (responseJson && responseJson.message) { // Use lowercase 'message' based on controller
-                 errorMsg += "\n" + responseJson.message;
-              } else if (responseJson && responseJson.Message) { // Fallback check
-                 errorMsg += "\n" + responseJson.Message;
-              }
-          } catch (e) {
-              // If response is not JSON or parsing fails, use the generic message
-              console.warn("Could not parse error response as JSON or find message property.");
-          }
-          alert(errorMsg);
+    window.onAjaxError = function(xhr, status, error) {
+        console.error("AJAX Error in Modal:", { status: status, error: error, response: xhr.responseText });
+        var errorMsg = 'Hiba történt a kérés feldolgozása során.';
+        try {
+            var responseJson = JSON.parse(xhr.responseText);
+            if (responseJson && responseJson.message) {
+                errorMsg += "\n" + responseJson.message;
+            } else if (responseJson && responseJson.Message) {
+                errorMsg += "\n" + responseJson.Message;
+            }
+        } catch (e) {
+            console.warn("Could not parse error response as JSON or find message property.");
+        }
+        alert(errorMsg);
 
-          // Re-enable submit buttons on error
-          $('#bookingForm').find('button[type="submit"]').prop('disabled', false);
-          $('.cancel-form').find('button[type="submit"]').prop('disabled', false);
-     }
+        $('#bookingForm').find('button[type="submit"]').prop('disabled', false);
+        $('.cancel-form').find('button[type="submit"]').prop('disabled', false);
+    };
 
+    // Initialize when document is ready
+    $(document).ready(function() {
+        // Make sure CourseBookingAjax is initialized and forms are properly set up
+        if (window.CourseBookingAjax) {
+            console.log("Initializing form handlers in details view");
+            CourseBookingAjax.initializeFormHandlers(document);
+        } else {
+            console.error("CourseBookingAjax not found. AJAX functions will not work.");
+        }
+    });
 </script>

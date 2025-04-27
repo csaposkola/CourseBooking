@@ -13,11 +13,12 @@ BEGIN
         [IsPublic] BIT NOT NULL DEFAULT 1,
         [PrerequisiteIds] NVARCHAR(100) NULL,
         [CourseCategory] NVARCHAR(50) NOT NULL
+        -- Removed ModuleId - Let DAL2 Scope handle it if possible, otherwise add ModuleId INT NOT NULL here and in entity
     ) ON [PRIMARY]
 END
 GO
 
--- Insert initial course plans if empty
+-- Insert initial course plans if empty (Removed ModuleId column insert)
 IF NOT EXISTS (SELECT TOP 1 * FROM {databaseOwner}[{objectQualifier}CoursePlans])
 BEGIN
     INSERT INTO {databaseOwner}[{objectQualifier}CoursePlans]
@@ -40,13 +41,21 @@ BEGIN
         CONSTRAINT [PK_CourseSchedules] PRIMARY KEY CLUSTERED,
         [CoursePlanID] INT NOT NULL
         CONSTRAINT [FK_CourseSchedules_CoursePlans] FOREIGN KEY
-        REFERENCES {databaseOwner}[{objectQualifier}CoursePlans] (ID),
-        [StartTime] DATETIME NOT NULL,
+        REFERENCES {databaseOwner}[{objectQualifier}CoursePlans] (ID) ON DELETE CASCADE, -- Consider ON DELETE CASCADE? Or prevent deletion in service layer if booked.
+        [StartTime] DATETIME NOT NULL, -- Store as UTC
         [CreatedByUserID] INT NOT NULL,
         [CreatedDate] DATETIME NOT NULL DEFAULT GETUTCDATE(),
         [AvailableSeats] INT NOT NULL,
-        [IsActive] BIT NOT NULL DEFAULT 1
+        [IsActive] BIT NOT NULL DEFAULT 1,
+        [ModuleId] INT NOT NULL -- Explicit ModuleId for reliable scoping
     ) ON [PRIMARY]
+END
+GO
+
+-- Add ModuleId Index if not implicitly handled by Scope
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_CourseSchedules_ModuleId' AND object_id = OBJECT_ID('{databaseOwner}[{objectQualifier}CourseSchedules]'))
+BEGIN
+   CREATE INDEX [IX_CourseSchedules_ModuleId] ON {databaseOwner}[{objectQualifier}CourseSchedules] ([ModuleId])
 END
 GO
 
@@ -62,16 +71,24 @@ BEGIN
         CONSTRAINT [PK_CourseBookings] PRIMARY KEY CLUSTERED,
         [CourseScheduleID] INT NOT NULL
         CONSTRAINT [FK_CourseBookings_CourseSchedules] FOREIGN KEY
-        REFERENCES {databaseOwner}[{objectQualifier}CourseSchedules] (ID),
+        REFERENCES {databaseOwner}[{objectQualifier}CourseSchedules] (ID) ON DELETE CASCADE, -- If schedule deleted, cascade delete bookings.
         [UserID] INT NOT NULL,
-        [BookingTime] DATETIME NOT NULL DEFAULT GETUTCDATE(),
+        [BookingTime] DATETIME NOT NULL DEFAULT GETUTCDATE(), -- Store as UTC
         [IsCancelled] BIT NOT NULL DEFAULT 0,
         [VoucherCode] NVARCHAR(50) NULL,
-        [VoucherSentDate] DATETIME NULL,
+        -- [VoucherSentDate] DATETIME NULL, -- REMOVED
         [PaymentStatus] NVARCHAR(50) NOT NULL DEFAULT 'Pending',
         [PaymentReference] NVARCHAR(100) NULL,
-        [Notes] NVARCHAR(500) NULL
+        [Notes] NVARCHAR(500) NULL,
+        [ModuleId] INT NOT NULL -- Explicit ModuleId for reliable scoping
     ) ON [PRIMARY]
+END
+GO
+
+-- Add ModuleId Index if not implicitly handled by Scope
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_CourseBookings_ModuleId' AND object_id = OBJECT_ID('{databaseOwner}[{objectQualifier}CourseBookings]'))
+BEGIN
+   CREATE INDEX [IX_CourseBookings_ModuleId] ON {databaseOwner}[{objectQualifier}CourseBookings] ([ModuleId])
 END
 GO
 
@@ -81,51 +98,26 @@ GO
 CREATE INDEX [IX_CourseBookings_CourseScheduleID] ON {databaseOwner}[{objectQualifier}CourseBookings] (CourseScheduleID)
 GO
 
--- Create CourseParticipants table
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseParticipants]') AND type in (N'U'))
-BEGIN
-    CREATE TABLE {databaseOwner}[{objectQualifier}CourseParticipants]
-    (
-        [ID] INT NOT NULL IDENTITY (1, 1)
-        CONSTRAINT [PK_CourseParticipants] PRIMARY KEY CLUSTERED,
-        [BookingID] INT NOT NULL
-        CONSTRAINT [FK_CourseParticipants_CourseBookings] FOREIGN KEY
-        REFERENCES {databaseOwner}[{objectQualifier}CourseBookings] (ID),
-        [AttendanceStatus] NVARCHAR(50) NOT NULL DEFAULT 'Registered'
-    ) ON [PRIMARY]
-END
-GO
+-- REMOVED CourseParticipants Table Creation
 
--- Create CourseNotifications table
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}[{objectQualifier}CourseNotifications]') AND type in (N'U'))
-BEGIN
-    CREATE TABLE {databaseOwner}[{objectQualifier}CourseNotifications]
-    (
-        [ID] INT NOT NULL IDENTITY (1, 1)
-        CONSTRAINT [PK_CourseNotifications] PRIMARY KEY CLUSTERED,
-        [BookingID] INT NOT NULL
-        CONSTRAINT [FK_CourseNotifications_CourseBookings] FOREIGN KEY
-        REFERENCES {databaseOwner}[{objectQualifier}CourseBookings] (ID),
-        [NotificationType] NVARCHAR(50) NOT NULL,
-        [Recipients] NVARCHAR(MAX) NOT NULL,
-        [SentDate] DATETIME NOT NULL DEFAULT GETUTCDATE(),
-        [TemplateUsed] NVARCHAR(100) NOT NULL,
-        [IsDeliverySuccessful] BIT NOT NULL DEFAULT 0,
-        [ErrorLog] NVARCHAR(500) NULL
-    ) ON [PRIMARY]
-END
-GO
+-- REMOVED CourseNotifications Table Creation
 
--- Insert sample course schedules if none exist
+-- Insert sample course schedules if none exist (Add ModuleId - assumed to be 1, adjust if needed for testing)
+-- Note: Using hardcoded ModuleId=1 here. Ideally, insertion should happen via code using context.
 IF NOT EXISTS (SELECT TOP 1 * FROM {databaseOwner}[{objectQualifier}CourseSchedules])
 BEGIN
+    DECLARE @moduleId INT = 1; -- Set default ModuleId for sample data, adjust as needed
+    IF EXISTS(SELECT TOP 1 ModuleId FROM DnnSharp.Common.Utilities.ModuleContext) -- Check if context exists if this were run via code
+       SET @moduleId = (SELECT TOP 1 ModuleId FROM DnnSharp.Common.Utilities.ModuleContext);
+
     INSERT INTO {databaseOwner}[{objectQualifier}CourseSchedules]
-    (CoursePlanID, StartTime, CreatedByUserID, CreatedDate, AvailableSeats, IsActive)
+    (CoursePlanID, StartTime, CreatedByUserID, CreatedDate, AvailableSeats, IsActive, ModuleId)
     VALUES
-    (1, DATEADD(DAY, 7, GETUTCDATE()), 1, GETUTCDATE(), 10, 1),
-    (2, DATEADD(DAY, 8, GETUTCDATE()), 1, GETUTCDATE(), 8, 1),
-    (3, DATEADD(DAY, 9, GETUTCDATE()), 1, GETUTCDATE(), 12, 1),
-    (4, DATEADD(DAY, 14, GETUTCDATE()), 1, GETUTCDATE(), 15, 1),
-    (5, DATEADD(DAY, 21, GETUTCDATE()), 1, GETUTCDATE(), 6, 1)
+    -- Dates relative to execution time, storing as UTC
+    (1, DATEADD(DAY, 7, GETUTCDATE()), 1, GETUTCDATE(), 10, 1, @moduleId),
+    (2, DATEADD(DAY, 8, GETUTCDATE()), 1, GETUTCDATE(), 8, 1, @moduleId),
+    (3, DATEADD(DAY, 9, GETUTCDATE()), 1, GETUTCDATE(), 12, 1, @moduleId),
+    (4, DATEADD(DAY, 14, GETUTCDATE()), 1, GETUTCDATE(), 15, 1, @moduleId),
+    (5, DATEADD(DAY, 21, GETUTCDATE()), 1, GETUTCDATE(), 6, 1, @moduleId)
 END
 GO

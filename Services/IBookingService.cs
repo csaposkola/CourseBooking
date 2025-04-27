@@ -15,7 +15,7 @@ namespace CourseBooking.Services
         CourseScheduleEntity GetCourseScheduleById(int scheduleId);
         CourseScheduleEntity CreateCourseSchedule(CourseScheduleEntity schedule);
         bool UpdateCourseSchedule(CourseScheduleEntity schedule);
-        bool DeleteCourseSchedule(int scheduleId);
+        bool DeleteCourseSchedule(int scheduleId); // Consider implications (inactive vs delete)
 
         // Booking operations
         IEnumerable<BookingEntity> GetBookingsByUser(int userId);
@@ -24,13 +24,12 @@ namespace CourseBooking.Services
         BookingEntity CreateBooking(int courseScheduleId, int userId, string notes = null);
         bool CancelBooking(int bookingId);
 
-        // Notification operations
-        bool SendBookingConfirmation(int bookingId);
-        bool SendCourseReminder(int bookingId, int hoursBeforeCourse);
+        // Notification operations REMOVED
+        // bool SendBookingConfirmation(int bookingId);
+        // bool SendCourseReminder(int bookingId, int hoursBeforeCourse);
 
         // Helper operations
-        int GetBookingCountForSchedule(int scheduleId);
-        bool IsUserRegisteredForSchedule(int scheduleId, int userId);
-        bool HasScheduleAvailableSeats(int scheduleId);
+        int GetBookingCountForSchedule(int scheduleId); // Still useful
+        bool IsUserRegisteredForSchedule(int scheduleId, int userId); // Still useful
     }
 }

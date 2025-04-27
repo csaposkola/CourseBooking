@@ -1,219 +1,250 @@
-using CourseBooking.Models;
-using CourseBooking.Services;
-using DotNetNuke.Entities.Modules;
-using DotNetNuke.Framework.JavaScriptLibraries;
-using DotNetNuke.Web.Mvc.Framework.ActionFilters;
-using DotNetNuke.Web.Mvc.Framework.Controllers;
 using System;
 using System.Linq;
 using System.Web.Mvc;
+using CourseBooking.Models;
+using CourseBooking.Services;
+using DotNetNuke.Framework;
+using DotNetNuke.Framework.JavaScriptLibraries;
+using DotNetNuke.Services.Exceptions;
+using DotNetNuke.Web.Mvc.Framework.ActionFilters;
+using DotNetNuke.Web.Mvc.Framework.Controllers;
 
 namespace CourseBooking.Controllers
 {
     [DnnHandleError]
     public class CalendarController : DnnController
     {
-        private IBookingService _bookingService;
-
-        protected IBookingService BookingService
-        {
-            get
-            {
-                if (_bookingService == null && ActiveModule != null)
-                {
-                    _bookingService = new BookingService(ActiveModule.ModuleID, PortalSettings.PortalId);
-                }
-                return _bookingService;
-            }
+        private readonly IBookingService _bookingService;
+        
+        public CalendarController() {
+             if (this.ModuleContext?.Configuration != null && this.PortalSettings != null) {
+                  _bookingService = new BookingService(this.ModuleContext.Configuration.ModuleID, this.PortalSettings.PortalId);
+             } else {
+                  // Log critical failure if context is unavailable during instantiation
+                  try {
+                      Exceptions.LogException(new InvalidOperationException("CalendarController could not initialize BookingService due to missing Module or Portal context."));
+                  } catch { /* Failsafe if logging fails */ }
+                  _bookingService = null;
+             }
         }
 
+        // Helper to check service availability and set TempData for errors
+        private bool EnsureServiceAvailable()
+        {
+             if (_bookingService == null) {
+                  TempData["ErrorMessage"] = "The booking service is currently unavailable. Please try again later.";
+                  // Also log this internally if it wasn't logged during construction
+                  try {
+                      Exceptions.LogException(new InvalidOperationException("BookingService was null when EnsureServiceAvailable was called in CalendarController."));
+                  } catch { /* Failsafe */ }
+                  return false;
+             }
+             return true;
+        }
+
+        // Action to display the main calendar view
         [ModuleAction(ControlKey = "Edit", TitleKey = "ManageSchedules")]
         public ActionResult Index()
         {
-            // Request required scripts for the calendar view
+            // Explicitly qualify the static DNN JavaScript class to avoid ambiguity
             DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
             DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
-            DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
 
-            // Get current year and month
+            // Keep AntiForgery support request for API calls from calendar.js
+            ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+
             var currentDate = DateTime.Now;
             ViewBag.CurrentYear = currentDate.Year;
             ViewBag.CurrentMonth = currentDate.Month;
-            ViewBag.IsAdmin = User.IsInRole("Administrators") || User.IsSuperUser;
+
+            // Pass context info needed by the view/JS
+            ViewBag.ModuleId = ModuleContext.Configuration.ModuleID;
+            ViewBag.UserId = User?.UserID ?? 0;
+            ViewBag.InitialLocale = System.Threading.Thread.CurrentThread.CurrentUICulture.Name;
+
+            // Pass any messages from TempData to ViewBag for the view
+            ViewBag.ErrorMessage = TempData["ErrorMessage"];
+            ViewBag.SuccessMessage = TempData["SuccessMessage"];
 
             return View();
         }
 
-        public ActionResult Details(int id)
+        // Action to display details of a specific course schedule
+        public ActionResult Details(int id) // id is CourseScheduleID
         {
-            var schedule = BookingService.GetCourseScheduleById(id);
+            if (!EnsureServiceAvailable()) return RedirectToAction("Index");
+
+            var schedule = _bookingService.GetCourseScheduleById(id);
             if (schedule == null)
             {
-                return HttpNotFound();
+                TempData["ErrorMessage"] = "The requested course schedule was not found.";
+                return RedirectToAction("Index");
             }
 
-            // Check if user is already registered
-            bool isRegistered = false;
-            BookingEntity userBooking = null;
-
-            if (User.UserID > 0)
+            // Determine user's status regarding this schedule
+            if (Request.IsAuthenticated)
             {
-                isRegistered = BookingService.IsUserRegisteredForSchedule(id, User.UserID);
-                if (isRegistered)
+                ViewBag.IsRegistered = _bookingService.IsUserRegisteredForSchedule(id, User.UserID);
+                if ((bool)ViewBag.IsRegistered)
                 {
-                    var bookings = BookingService.GetBookingsByCourseSchedule(id);
-                    userBooking = bookings.FirstOrDefault(b => b.UserID == User.UserID && !b.IsCancelled);
+                    // Find the active booking if they are registered
+                    ViewBag.UserBooking = _bookingService.GetBookingsByCourseSchedule(id)
+                                                    .FirstOrDefault(b => b.UserID == User.UserID && !b.IsCancelled);
                 }
+                 // Check if registration is possible
+                 ViewBag.CanRegister = !(bool)ViewBag.IsRegistered
+                                      && schedule.RemainingSeats > 0
+                                      && schedule.StartTime.ToUniversalTime() > DateTime.UtcNow;
             }
-
-            ViewBag.IsRegistered = isRegistered;
-            ViewBag.UserBooking = userBooking;
-            ViewBag.CanRegister = !isRegistered && schedule.RemainingSeats > 0 && schedule.StartTime > DateTime.UtcNow;
-
-            // Handle AJAX requests - with a specific flag to ensure proper layout handling
-            bool isAjax = Request.IsAjaxRequest() || Request.QueryString["isAjax"] == "true";
-            if (isAjax)
+            else // Anonymous user status
             {
-                // For AJAX requests in popups, we should use a specific partial view or adjust the layout
-                ViewBag.IsAjaxRequest = true;
-                return View(schedule);
+                ViewBag.IsRegistered = false;
+                ViewBag.UserBooking = null;
+                ViewBag.CanRegister = schedule.RemainingSeats > 0
+                                     && schedule.StartTime.ToUniversalTime() > DateTime.UtcNow;
             }
 
+            // Pass messages
+            ViewBag.ErrorMessage = TempData["ErrorMessage"];
+            ViewBag.SuccessMessage = TempData["SuccessMessage"];
+
+            // Pass the schedule model to the view
             return View(schedule);
         }
 
+        // Action to handle the POST request for registering
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
-        [Authorize]
-        public ActionResult Register(int id, string notes)
+        [Authorize] // Ensures user is logged in
+        public ActionResult Register(int scheduleId, string notes)
         {
-            if (User.UserID <= 0)
+            // Check login status (redundant with [Authorize] but safe)
+            if (!Request.IsAuthenticated || User.UserID <= 0)
             {
-                return new HttpUnauthorizedResult();
+                return new HttpUnauthorizedResult("User must be logged in to register.");
             }
+
+            // Ensure service is ready before proceeding
+            if (!EnsureServiceAvailable()) return RedirectToAction("Details", new { id = scheduleId });
 
             try
             {
-                var schedule = BookingService.GetCourseScheduleById(id);
-                if (schedule == null)
-                {
-                    return HttpNotFound();
-                }
+                // Attempt booking via service layer
+                var booking = _bookingService.CreateBooking(scheduleId, User.UserID, notes);
 
-                // Create booking
-                var booking = BookingService.CreateBooking(id, User.UserID, notes);
-
-                // Send confirmation
-                BookingService.SendBookingConfirmation(booking.ID);
-
-                // For AJAX requests, return JSON result
-                if (Request.IsAjaxRequest())
-                {
-                    return Json(booking);
-                }
-
+                // Set success message and redirect to confirmation
+                TempData["SuccessMessage"] = "Booking successful!";
                 return RedirectToAction("Confirmation", new { id = booking.ID });
             }
+            // Catch specific business exceptions from the service
+            catch (CourseBooking.Services.BookingException ex) // Qualify exception type if needed
+            {
+                Exceptions.LogException(ex); // Log the business error details
+                TempData["ErrorMessage"] = ex.Message; // Show user-friendly message
+                return RedirectToAction("Details", new { id = scheduleId }); // Redirect back to details page
+            }
+            // Catch any other unexpected errors
             catch (Exception ex)
             {
-                ModelState.AddModelError("", "Error creating booking: " + ex.Message);
-                
-                if (Request.IsAjaxRequest())
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
-                
-                return RedirectToAction("Details", new { id });
+                Exceptions.LogException(ex); // Log unexpected error
+                TempData["ErrorMessage"] = "An unexpected error occurred while processing your booking.";
+                return RedirectToAction("Details", new { id = scheduleId }); // Redirect back to details page
             }
         }
 
-        [Authorize]
-        public ActionResult Confirmation(int id)
+        // Action to display the booking confirmation page
+        [Authorize] // User must be logged in
+        public ActionResult Confirmation(int id) // id is BookingID
         {
-            var booking = BookingService.GetBookingById(id);
+            if (!EnsureServiceAvailable()) return RedirectToAction("Index");
+
+            var booking = _bookingService.GetBookingById(id);
             if (booking == null)
             {
-                return HttpNotFound();
+                TempData["ErrorMessage"] = "Booking confirmation not found.";
+                return RedirectToAction("MyBookings"); // Go to list if specific one isn't found
             }
 
-            // Check authorization
-            if (booking.UserID != User.UserID && !User.IsInRole("Administrators") && !User.IsSuperUser)
+            // Security: Ensure user owns the booking or is an admin
+            if (booking.UserID != User.UserID && !User.IsAdmin)
             {
-                return new HttpUnauthorizedResult();
+                 Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to access booking {id} owned by user {booking.UserID}."));
+                 TempData["ErrorMessage"] = "You do not have permission to view this booking confirmation.";
+                 return RedirectToAction("MyBookings"); // Redirect away
             }
 
-            // Handle AJAX requests - with a specific flag to ensure proper layout handling
-            bool isAjax = Request.IsAjaxRequest() || Request.QueryString["isAjax"] == "true";
-            if (isAjax)
-            {
-                ViewBag.IsAjaxRequest = true;
-                return View(booking);
-            }
+            // Pass messages
+            ViewBag.ErrorMessage = TempData["ErrorMessage"];
+            ViewBag.SuccessMessage = TempData["SuccessMessage"];
 
+            // Pass booking model to the view
             return View(booking);
         }
 
+        // Action to handle the POST request for cancelling a booking
         [HttpPost]
         [DotNetNuke.Web.Mvc.Framework.ActionFilters.ValidateAntiForgeryToken]
-        [Authorize]
-        public ActionResult Cancel(int id)
+        [Authorize] // User must be logged in
+        public ActionResult Cancel(int bookingId)
         {
-            var booking = BookingService.GetBookingById(id);
-            if (booking == null)
-            {
-                return HttpNotFound();
-            }
+             if (!EnsureServiceAvailable()) return RedirectToAction("MyBookings");
 
-            // Check authorization
-            if (booking.UserID != User.UserID && !User.IsInRole("Administrators") && !User.IsSuperUser)
-            {
-                return new HttpUnauthorizedResult();
-            }
+            // Retrieve booking first to check ownership and existence
+            var booking = _bookingService.GetBookingById(bookingId);
+             if (booking == null)
+             {
+                 TempData["ErrorMessage"] = "Booking not found.";
+                 return RedirectToAction("MyBookings");
+             }
+             
+             if (booking.UserID != User.UserID && !User.IsAdmin)
+             {
+                 Exceptions.LogException(new UnauthorizedAccessException($"User {User.UserID} attempted to cancel booking {bookingId} owned by user {booking.UserID}."));
+                 TempData["ErrorMessage"] = "You do not have permission to cancel this booking.";
+                 return RedirectToAction("MyBookings");
+             }
 
             try
             {
-                if (BookingService.CancelBooking(id))
-                {
-                    if (Request.IsAjaxRequest())
-                    {
-                        return Json(new { success = true, message = "Booking cancelled successfully" });
-                    }
-                    return RedirectToAction("MyBookings");
-                }
-                else
-                {
-                    if (Request.IsAjaxRequest())
-                    {
-                        return Json(new { success = false, message = "Failed to cancel booking" });
-                    }
-                    ModelState.AddModelError("", "Failed to cancel booking.");
-                    return RedirectToAction("Confirmation", new { id });
-                }
+                _bookingService.CancelBooking(bookingId);
+                TempData["SuccessMessage"] = "Booking cancelled successfully.";
+                return RedirectToAction("MyBookings"); // Show updated list
             }
+            // Catch specific business exceptions (e.g., cancellation window closed)
+            catch (CourseBooking.Services.BookingException ex) // Qualify if needed
+            {
+                 Exceptions.LogException(ex); // Log details
+                 TempData["ErrorMessage"] = ex.Message; // Show user message
+                 return RedirectToAction("MyBookings"); // Redirect back to list
+            }
+
             catch (Exception ex)
             {
-                if (Request.IsAjaxRequest())
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
-                ModelState.AddModelError("", "Error: " + ex.Message);
-                return RedirectToAction("Confirmation", new { id });
+                 Exceptions.LogException(ex); // Log details
+                 TempData["ErrorMessage"] = "An unexpected error occurred while cancelling the booking.";
+                 return RedirectToAction("MyBookings"); // Redirect back to list
             }
         }
 
-        [Authorize]
+        // Action to display the current user's bookings
+        [Authorize] // User must be logged in
         public ActionResult MyBookings()
         {
-            var bookings = BookingService.GetBookingsByUser(User.UserID);
-            
-            // Handle AJAX requests - with a specific flag to ensure proper layout handling
-            bool isAjax = Request.IsAjaxRequest() || Request.QueryString["isAjax"] == "true";
-            if (isAjax)
-            {
-                ViewBag.IsAjaxRequest = true;
-                return View(bookings);
-            }
-            
+            if (!EnsureServiceAvailable()) return View(Enumerable.Empty<BookingEntity>()); // Show empty view if service fails
+
+            // Check authentication (redundant but safe)
+             if (!Request.IsAuthenticated || User.UserID <= 0) {
+                 return new HttpUnauthorizedResult();
+             }
+
+            // Get user's bookings via service
+            var bookings = _bookingService.GetBookingsByUser(User.UserID);
+
+            // Pass messages
+            ViewBag.ErrorMessage = TempData["ErrorMessage"];
+            ViewBag.SuccessMessage = TempData["SuccessMessage"];
+
+            // Pass bookings model to the view
             return View(bookings);
         }
     }
