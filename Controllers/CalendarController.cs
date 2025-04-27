@@ -70,11 +70,13 @@ namespace CourseBooking.Controllers
             ViewBag.UserBooking = userBooking;
             ViewBag.CanRegister = !isRegistered && schedule.RemainingSeats > 0 && schedule.StartTime > DateTime.UtcNow;
 
-            // Handle AJAX requests
-            if (Request.IsAjaxRequest())
+            // Handle AJAX requests - with a specific flag to ensure proper layout handling
+            bool isAjax = Request.IsAjaxRequest() || Request.QueryString["isAjax"] == "true";
+            if (isAjax)
             {
-                // For AJAX requests, return only the partial view content
-                return PartialView(schedule);
+                // For AJAX requests in popups, we should use a specific partial view or adjust the layout
+                ViewBag.IsAjaxRequest = true;
+                return View(schedule);
             }
 
             return View(schedule);
@@ -140,10 +142,12 @@ namespace CourseBooking.Controllers
                 return new HttpUnauthorizedResult();
             }
 
-            // Handle AJAX requests
-            if (Request.IsAjaxRequest())
+            // Handle AJAX requests - with a specific flag to ensure proper layout handling
+            bool isAjax = Request.IsAjaxRequest() || Request.QueryString["isAjax"] == "true";
+            if (isAjax)
             {
-                return PartialView(booking);
+                ViewBag.IsAjaxRequest = true;
+                return View(booking);
             }
 
             return View(booking);
@@ -202,10 +206,12 @@ namespace CourseBooking.Controllers
         {
             var bookings = BookingService.GetBookingsByUser(User.UserID);
             
-            // Handle AJAX requests
-            if (Request.IsAjaxRequest())
+            // Handle AJAX requests - with a specific flag to ensure proper layout handling
+            bool isAjax = Request.IsAjaxRequest() || Request.QueryString["isAjax"] == "true";
+            if (isAjax)
             {
-                return PartialView(bookings);
+                ViewBag.IsAjaxRequest = true;
+                return View(bookings);
             }
             
             return View(bookings);

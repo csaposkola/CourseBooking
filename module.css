@@ -1,5 +1,82 @@
 /* CourseBooking Module CSS */
 
+/* Modal Styling */
+#courseBookingModal {
+    font-family: Arial, sans-serif;
+    max-width: 95%;
+    padding: 0;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar {
+    background-color: #006dcc !important;
+    color: white !important;
+    border-bottom: 1px solid #0057a3 !important;
+    font-weight: bold;
+    border-radius: 0;
+}
+
+.courseBookingModalDialog .ui-dialog-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar-close {
+    outline: none;
+    background: transparent !important;
+    border: none !important;
+    color: white !important;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar-close .ui-icon {
+    color: white;
+    opacity: 0.8;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar-close:hover .ui-icon {
+    opacity: 1;
+}
+
+#courseBookingModal .text-center {
+    text-align: center;
+}
+
+#courseBookingModal .p-4 {
+    padding: 1.5rem;
+}
+
+#courseBookingModal .fa-spinner {
+    margin-bottom: 15px;
+}
+
+/* Fix for modal z-index issues with DNN */
+.ui-widget-overlay {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    opacity: 0.5;
+    z-index: 1000; /* Higher than DNN default elements */
+}
+
+.ui-dialog {
+    z-index: 1001 !important; /* Ensure dialog appears above overlay */
+}
+
+/* Extra styling for voucher code */
+.voucher-code {
+    display: inline-block;
+    font-family: monospace;
+    font-size: 16px;
+    background-color: #f5f5f5;
+    padding: 5px 10px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+    margin-right: 10px;
+}
+
 /* Calendar View */
 .csaposkola-course-calendar {
     margin: 20px 0;
@@ -23,9 +100,9 @@
     margin-bottom: 10px;
 }
 
-    .calendar-month-selector button {
-        margin: 0 10px;
-    }
+.calendar-month-selector button {
+    margin: 0 10px;
+}
 
 #currentMonthDisplay {
     font-size: 18px;
@@ -40,14 +117,14 @@
     align-items: center;
 }
 
-    .calendar-jump-to select {
-        margin-right: 5px;
-        width: auto;
-    }
+.calendar-jump-to select {
+    margin-right: 5px;
+    width: auto;
+}
 
-    .calendar-jump-to button {
-        margin-right: 5px;
-    }
+.calendar-jump-to button {
+    margin-right: 5px;
+}
 
 .calendar-table {
     width: 100%;
@@ -55,12 +132,12 @@
     table-layout: fixed;
 }
 
-    .calendar-table th {
-        background-color: #f5f5f5;
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: center;
-    }
+.calendar-table th {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
 
 .calendar-day {
     border: 1px solid #ddd;
@@ -70,34 +147,34 @@
     position: relative;
 }
 
-    .calendar-day.empty {
-        background-color: #f9f9f9;
-    }
+.calendar-day.empty {
+    background-color: #f9f9f9;
+}
 
-    .calendar-day.past-date {
-        background-color: #f9f9f9;
-        color: #999;
-    }
+.calendar-day.past-date {
+    background-color: #f9f9f9;
+    color: #999;
+}
 
-    .calendar-day.today {
-        background-color: #e6f7ff;
-    }
+.calendar-day.today {
+    background-color: #e6f7ff;
+}
 
 .day-number {
     font-weight: bold;
     margin-bottom: 5px;
 }
 
-    .day-number.today-marker {
-        background-color: #007bff;
-        color: white;
-        display: inline-block;
-        width: 25px;
-        height: 25px;
-        text-align: center;
-        line-height: 25px;
-        border-radius: 50%;
-    }
+.day-number.today-marker {
+    background-color: #007bff;
+    color: white;
+    display: inline-block;
+    width: 25px;
+    height: 25px;
+    text-align: center;
+    line-height: 25px;
+    border-radius: 50%;
+}
 
 .course-slots {
     overflow-y: auto;
@@ -115,35 +192,35 @@
     text-decoration: none;
 }
 
-    .time-slot:hover {
-        opacity: 0.9;
-    }
+.time-slot:hover {
+    opacity: 0.9;
+}
 
-    .time-slot .time {
-        font-weight: bold;
-    }
+.time-slot .time {
+    font-weight: bold;
+}
 
-    .time-slot.available {
-        background-color: #e8f5e9;
-        border: 1px solid #c8e6c9;
-    }
+.time-slot.available {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+}
 
-    .time-slot.my-booking {
-        background-color: #e3f2fd;
-        border: 1px solid #bbdefb;
-    }
+.time-slot.my-booking {
+    background-color: #e3f2fd;
+    border: 1px solid #bbdefb;
+}
 
-    .time-slot.booked {
-        background-color: #ffecb3;
-        border: 1px solid #ffe082;
-    }
+.time-slot.booked {
+    background-color: #ffecb3;
+    border: 1px solid #ffe082;
+}
 
-    .time-slot.past {
-        background-color: #f5f5f5;
-        border: 1px solid #e0e0e0;
-        color: #999;
-        cursor: default;
-    }
+.time-slot.past {
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    color: #999;
+    cursor: default;
+}
 
 .calendar-legend {
     display: flex;
@@ -166,25 +243,25 @@
     border-radius: 3px;
 }
 
-    .legend-color.available {
-        background-color: #e8f5e9;
-        border: 1px solid #c8e6c9;
-    }
+.legend-color.available {
+    background-color: #e8f5e9;
+    border: 1px solid #c8e6c9;
+}
 
-    .legend-color.my-booking {
-        background-color: #e3f2fd;
-        border: 1px solid #bbdefb;
-    }
+.legend-color.my-booking {
+    background-color: #e3f2fd;
+    border: 1px solid #bbdefb;
+}
 
-    .legend-color.booked {
-        background-color: #ffecb3;
-        border: 1px solid #ffe082;
-    }
+.legend-color.booked {
+    background-color: #ffecb3;
+    border: 1px solid #ffe082;
+}
 
-    .legend-color.past {
-        background-color: #f5f5f5;
-        border: 1px solid #e0e0e0;
-    }
+.legend-color.past {
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+}
 
 .calendar-loading {
     text-align: center;
@@ -209,6 +286,16 @@
     margin-bottom: 20px;
 }
 
+/* Stacked layout version */
+.booking-details-stacked {
+    flex-direction: column;
+}
+
+.booking-details-stacked .full-width {
+    width: 100%;
+    flex-basis: 100%;
+}
+
 .booking-section,
 .registration-section,
 .participants-section {
@@ -221,31 +308,56 @@
     margin-bottom: 20px;
 }
 
-    .booking-section h3,
-    .registration-section h3,
-    .participants-section h3 {
-        margin-top: 0;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #ddd;
-        margin-bottom: 15px;
-    }
+.booking-section h3,
+.registration-section h3,
+.participants-section h3 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 15px;
+}
 
 .booking-actions {
     margin: 20px 0;
     text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
 }
 
-    .booking-actions .btn {
-        margin: 0 5px;
-    }
+.booking-actions .btn {
+    margin: 0 5px;
+    min-width: 120px;
+}
 
-.voucher-code {
-    font-family: monospace;
-    font-size: 16px;
-    background-color: #f0f0f0;
-    padding: 5px 10px;
-    border-radius: 3px;
-    margin-right: 10px;
+.modal-close {
+    background-color: #f5f5f5;
+    border-color: #ddd;
+}
+
+.modal-close:hover {
+    background-color: #e5e5e5;
+}
+
+.btn-danger {
+    background-color: #d9534f;
+    border-color: #d43f3a;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c9302c;
+    border-color: #ac2925;
+}
+
+.btn-primary {
+    background-color: #337ab7;
+    border-color: #2e6da4;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #286090;
+    border-color: #204d74;
 }
 
 .voucher-container {

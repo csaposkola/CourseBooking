@@ -13,6 +13,14 @@
 
     var hasUpcomingBookings = Model.Any(b => !b.IsCancelled && b.CourseSchedule.StartTime > DateTime.UtcNow);
     var hasPastBookings = Model.Any(b => b.CourseSchedule.StartTime <= DateTime.UtcNow);
+    
+    var isAjax = Request.QueryString["isAjax"] == "true" || Request.IsAjaxRequest() || ViewBag.IsAjaxRequest == true;
+    
+    // If this is a popup, we don't need the wrapper layout
+    if (isAjax)
+    {
+        Layout = null;
+    }
 }
 
 <div class="user-bookings">
@@ -169,7 +177,7 @@
             <i class="fa fa-calendar"></i> Vissza a naptárhoz
         </button>
         
-        @if (Request.IsAjaxRequest())
+        @if (isAjax)
         {
             <button type="button" class="btn btn-default modal-close">Bezárás</button>
         }

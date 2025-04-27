@@ -178,7 +178,7 @@ var CourseCalendar = function (options) {
                                     slotClass += ' my-booking';
                                 }
 
-                                rowHtml += '<a href="' + self.detailsUrl + '?id=' + schedule.ID + '" class="' + slotClass + '" data-modal="true" data-modal-title="' + (schedule.CoursePlan ? schedule.CoursePlan.Name : 'Course Details') + '">';
+                                rowHtml += '<a href="' + self.detailsUrl + '?id=' + schedule.ID + '&isAjax=true" class="' + slotClass + '" data-modal="true" data-modal-title="' + (schedule.CoursePlan ? schedule.CoursePlan.Name : 'Course Details') + '" data-modal-width="800" data-modal-height="600">';
                                 rowHtml += '<span class="time">' + formattedTime + '</span> - ';
                                 // Ensure CoursePlan and Name exist
                                 rowHtml += (schedule.CoursePlan ? schedule.CoursePlan.Name : 'Unknown Course') + ' (' + remainingSeats + '/' + schedule.AvailableSeats + ')';

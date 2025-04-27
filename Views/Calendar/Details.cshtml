@@ -7,22 +7,28 @@
 @inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<CourseScheduleEntity>
 
 @{
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
-    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
-    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
+DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQueryUI);
+DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxAntiForgerySupport();
 
-    var localStartTime = Model.StartTime.ToLocalTime();
-    var localEndTime = Model.EndTime.ToLocalTime();
-    var isRegistered = ViewBag.IsRegistered as bool? ?? false;
-    var userBooking = ViewBag.UserBooking as BookingEntity;
-    var canRegister = ViewBag.CanRegister as bool? ?? false;
+var localStartTime = Model.StartTime.ToLocalTime();
+var localEndTime = Model.EndTime.ToLocalTime();
+var isRegistered = ViewBag.IsRegistered as bool? ?? false;
+var userBooking = ViewBag.UserBooking as BookingEntity;
+var canRegister = ViewBag.CanRegister as bool? ?? false;
+var isAjax = Request.QueryString["isAjax"] == "true" || Request.IsAjaxRequest();
+
+if (isAjax)
+{
+Layout = null;
+}
 }
 
 <div class="course-booking-detail">
     <h2>Tanfolyam részletek</h2>
 
-    <div class="booking-details-container">
-        <div class="booking-section">
+<div class="booking-details-container booking-details-stacked">
+        <div class="booking-section full-width">
             <h3>Tanfolyam információk</h3>
 
             <div class="form-group">
@@ -94,7 +100,7 @@
 
         @if (isRegistered && userBooking != null)
         {
-            <div class="booking-section">
+            <div class="booking-section full-width">
                 <h3>Az Ön foglalása</h3>
 
                 <div class="form-group">
@@ -125,7 +131,7 @@
                     <div class="form-group">
                         <label class="control-label col-md-4">Kupon kód</label>
                         <div class="col-md-8">
-                            <div class="voucher-code">
+                            <div class="voucher-container">
                                 <span id="voucherCode">@userBooking.VoucherCode</span>
                                 <button type="button" id="copyVoucher" class="btn btn-sm btn-default">
                                     <i class="fa fa-copy"></i>
@@ -145,10 +151,10 @@
         }
         else if (Request.IsAuthenticated && canRegister)
         {
-            <div class="registration-section">
+            <div class="registration-section full-width">
                 <h3>Foglalás</h3>
 
-                <form action="@Url.Action("Register", "Calendar")" method="post" class="form-horizontal" role="form" data-ajax="true" data-success-callback="onBookingSuccess">
+                <form id="bookingForm" action="@Url.Action("Register", "Calendar")" method="post" class="form-horizontal" role="form">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.ID" />
 
@@ -161,7 +167,7 @@
 
                     <div class="form-group">
                         <div class="col-md-offset-4 col-md-8">
-                            <button type="submit" class="btn btn-primary">Foglalás véglegesítése</button>
+                            <button type="submit" id="submitBooking" class="btn btn-primary">Foglalás véglegesítése</button>
                         </div>
                     </div>
                 </form>
@@ -169,7 +175,7 @@
         }
         else if (!Request.IsAuthenticated)
         {
-            <div class="registration-message">
+            <div class="registration-message full-width">
                 <div class="alert alert-info">
                     <strong>Figyelem!</strong> A foglaláshoz be kell jelentkeznie.
                 </div>
@@ -177,7 +183,7 @@
         }
         else if (Model.RemainingSeats <= 0)
         {
-            <div class="registration-message">
+            <div class="registration-message full-width">
                 <div class="alert alert-warning">
                     <strong>Sajnáljuk!</strong> Ez a tanfolyam már betelt.
                 </div>
@@ -185,7 +191,7 @@
         }
         else if (isRegistered)
         {
-            <div class="registration-message">
+            <div class="registration-message full-width">
                 <div class="alert alert-info">
                     <strong>Információ:</strong> Ön már regisztrált erre a tanfolyamra.
                 </div>
@@ -196,10 +202,10 @@
     <div class="booking-actions">
         @if (isRegistered && userBooking != null && !userBooking.IsCancelled && Model.StartTime > DateTime.UtcNow.AddHours(24))
         {
-            <form action="@Url.Action("Cancel", "Calendar", new { id = userBooking.ID })" method="post" class="cancel-form" data-ajax="true" data-success-callback="onCancelSuccess" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-danger">Foglalás lemondása</button>
-            </form>
+        <form action="@Url.Action("Cancel", "Calendar", new { id = userBooking.ID })" method="post" class="cancel-form" data-ajax="true" data-success-callback="onCancelSuccess" onsubmit="return confirm('Biztosan lemondja a foglalást?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger">Foglalás lemondása</button>
+        </form>
         }
 
         <button type="button" class="btn btn-default modal-close">Bezárás</button>
@@ -207,9 +213,8 @@
 </div>
 
 @{
-    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
+ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "~/DesktopModules/MVC/CourseBooking/module.css");
 }
-
 <script type="text/javascript">
     $(document).ready(function () {
         // Copy voucher code
@@ -235,26 +240,94 @@
             }, 1500);
         });
 
-        // Close modal button
+        // Close modal button - Fixed implementation
         $(".modal-close").click(function() {
-            if (window.parent && window.parent.$('#courseBookingModal').length) {
-                window.parent.$('#courseBookingModal').dialog('close');
-            } else if ($('#courseBookingModal').length) {
-                $('#courseBookingModal').dialog('close');
+            console.log("Close button clicked");
+            
+            // First try parent window dialog
+            if (window.parent && window.parent.jQuery && window.parent.jQuery('#courseBookingModal').hasClass('ui-dialog-content')) {
+                console.log("Closing parent dialog");
+                window.parent.jQuery('#courseBookingModal').dialog('close');
+            } 
+            // Then try current window dialog
+            else if (jQuery('#courseBookingModal').hasClass('ui-dialog-content')) {
+                console.log("Closing current dialog");
+                jQuery('#courseBookingModal').dialog('close');
+            } 
+            // Try direct parent access as fallback
+            else if (window.parent && typeof window.parent.closeModal === 'function') {
+                console.log("Calling parent closeModal function");
+                window.parent.closeModal();
+            }
+            // Last resort - if we can't close programmatically, at least give visual feedback
+            else {
+                console.log("No dialog found to close");
+                alert("Az ablak bezárásához kattintson az X gombra a jobb felső sarokban.");
             }
         });
-    });
-
-    // Booking success callback
-    function onBookingSuccess(response) {
-        // Open the confirmation in the same modal
-        if (window.parent && window.parent.CourseBookingAjax) {
-            window.parent.CourseBookingAjax.openModalUrl('@Url.Action("Confirmation", "Calendar")?id=' + response.ID, 'Foglalás visszaigazolása', {
-                width: 800,
-                height: 600
+        
+        // Handle booking form submission manually to ensure it works
+        $("#bookingForm").on("submit", function(e) {
+            e.preventDefault();
+            
+            console.log("Booking form submitted");
+            var formData = $(this).serialize();
+            var formAction = $(this).attr('action');
+            
+            // Show loading state
+            $("#submitBooking").prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Feldolgozás...');
+            
+            // Submit form via AJAX
+            $.ajax({
+                url: formAction,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    console.log("Booking successful", response);
+                    // Handle successful booking
+                    handleBookingSuccess(response);
+                },
+                error: function(xhr, status, error) {
+                    console.error("Booking error", xhr, status, error);
+                    // Reset button
+                    $("#submitBooking").prop('disabled', false).text('Foglalás véglegesítése');
+                    // Show error message
+                    alert("Hiba történt a foglalás során: " + (xhr.responseText || error));
+                }
             });
-        } else {
-            window.location.href = '@Url.Action("Confirmation", "Calendar")?id=' + response.ID;
+        });
+    });
+    
+    // Function to handle successful booking
+    function handleBookingSuccess(response) {
+        console.log("Handling booking success", response);
+        
+        // Navigate to confirmation page
+        var confirmationUrl = '@Url.Action("Confirmation", "Calendar")';
+        var bookingId = response.ID || '';
+        
+        // If in AJAX/modal context and parent has CourseBookingAjax
+        if (window.parent && window.parent.CourseBookingAjax) {
+            console.log("Opening confirmation in parent modal");
+            window.parent.CourseBookingAjax.openModalUrl(
+                confirmationUrl + '?id=' + bookingId + '&isAjax=true', 
+                'Foglalás visszaigazolása', 
+                { width: 800, height: 600 }
+            );
+        } 
+        // If in current window context and has CourseBookingAjax
+        else if (window.CourseBookingAjax) {
+            console.log("Opening confirmation in current modal");
+            CourseBookingAjax.openModalUrl(
+                confirmationUrl + '?id=' + bookingId + '&isAjax=true', 
+                'Foglalás visszaigazolása', 
+                { width: 800, height: 600 }
+            );
+        } 
+        // Fallback to direct navigation
+        else {
+            console.log("Redirecting to confirmation page");
+            window.location.href = confirmationUrl + '?id=' + bookingId;
         }
     }
 

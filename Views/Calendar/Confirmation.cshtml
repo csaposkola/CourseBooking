@@ -13,6 +13,14 @@
 
     var localStartTime = Model.CourseSchedule.StartTime.ToLocalTime();
     var localEndTime = Model.CourseSchedule.EndTime.ToLocalTime();
+    
+    var isAjax = Request.QueryString["isAjax"] == "true" || Request.IsAjaxRequest() || ViewBag.IsAjaxRequest == true;
+    
+    // If this is a popup, we don't need the wrapper layout
+    if (isAjax)
+    {
+        Layout = null;
+    }
 }
 
 <div class="booking-confirmation">
@@ -58,7 +66,7 @@
                             <dt>Kupon kód:</dt>
                             <dd>
                                 <div class="voucher-container">
-                                    <span id="voucherCode">@Model.VoucherCode</span>
+                                    <span id="voucherCode" class="voucher-code">@Model.VoucherCode</span>
                                     <button id="copyVoucher" class="btn btn-xs btn-default" title="Másolás a vágólapra">
                                         <i class="fa fa-copy"></i>
                                     </button>
@@ -107,7 +115,7 @@
             <i class="fa fa-calendar"></i> Vissza a naptárhoz
         </a>
         
-        @if (Request.IsAjaxRequest())
+        @if (isAjax)
         {
             <button type="button" class="btn btn-default modal-close">Bezárás</button>
         }

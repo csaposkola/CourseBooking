@@ -18,24 +18,46 @@ var CourseBookingAjax = (function () {
         var height = options.height || 550;
         var showClose = options.showClose !== false;
 
+        // Define global closeModal function for use by child frames
+        window.closeModal = function() {
+            var $modal = $('#courseBookingModal');
+            if ($modal.hasClass('ui-dialog-content')) {
+                $modal.dialog('close');
+            }
+        };
+
         var dialogOptions = {
             modal: true,
             title: title,
             width: width,
             height: height,
             resizable: false,
-            close: options.onClose || function() {}
+            closeOnEscape: true,
+            close: options.onClose || function() {},
+            // Add these options for better modal appearance
+            closeText: "×",
+            dialogClass: "dnnFormPopup courseBookingModalDialog",
+            position: { my: "center", at: "center", of: window }
         };
 
         // Create modal container if it doesn't exist
         var $modal = $('#courseBookingModal');
         if ($modal.length === 0) {
             $modal = $('<div id="courseBookingModal"></div>').appendTo('body');
+        } else if ($modal.hasClass('ui-dialog-content')) {
+            // If dialog is already open, close it first
+            $modal.dialog('close');
         }
 
         // Show loading indicator
-        $modal.html('<div class="text-center p-4"><i class="fa fa-spinner fa-spin fa-3x"></i><p>Loading...</p></div>');
+        $modal.html('<div class="text-center p-4"><i class="fa fa-spinner fa-spin fa-3x"></i><p>Betöltés...</p></div>');
         $modal.dialog(dialogOptions);
+
+        // Check if URL already has query parameters
+        var separator = url.indexOf('?') !== -1 ? '&' : '?';
+
+        // Add a parameter to indicate this is an AJAX request
+        url = url + separator + 'isAjax=true';
 
         // Load content via AJAX
         $.ajax({
@@ -46,13 +68,50 @@ var CourseBookingAjax = (function () {
                 'TabId': tabId
             },
             success: function(data) {
-                $modal.html(data);
+                console.log("Modal content loaded successfully");
+
+                // Instead of putting the entire response in the modal,
+                // try to extract only the modal content
+                var $content;
+
+                try {
+                    // Create a temporary div to parse the response
+                    var $temp = $('<div></div>').html(data);
+
+                    // Try to find the main content container
+                    $content = $temp.find('.course-booking-detail, .booking-confirmation, .user-bookings');
+
+                    if ($content.length > 0) {
+                        // Found specific content container
+                        console.log("Found specific content container");
+                        $modal.html($content);
+                    } else {
+                        // Fallback: look for module container
+                        $content = $temp.find('[id^="mvcContainer-"]');
+                        if ($content.length > 0) {
+                            console.log("Found module container");
+                            $modal.html($content.html());
+                        } else {
+                            // Last resort: use the whole response
+                            console.log("Using full response");
+                            $modal.html(data);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error parsing modal content:", e);
+                    // Fallback to the original response
+                    $modal.html(data);
+                }
+
+                // Ensure the modal is properly sized after content is loaded
+                $modal.dialog("option", "position", { my: "center", at: "center", of: window });
 
                 // Initialize form handlers in the modal
                 initializeFormHandlers($modal);
             },
             error: function(xhr, status, error) {
-                $modal.html('<div class="alert alert-danger">Error loading content: ' + error + '</div>');
+                console.error("Error loading modal content:", error);
+                $modal.html('<div class="alert alert-danger">Hiba történt a tartalom betöltése közben: ' + error + '</div>');
             }
         });
     }
@@ -123,8 +182,8 @@ var CourseBookingAjax = (function () {
             e.preventDefault();
             var url = $(this).attr('href');
             var title = $(this).data('modal-title') || 'Details';
-            var width = $(this).data('modal-width');
-            var height = $(this).data('modal-height');
+            var width = $(this).data('modal-width') || 800;
+            var height = $(this).data('modal-height') || 550;
 
             openModalUrl(url, title, {
                 width: width,
