@@ -10,6 +10,7 @@ namespace CourseBooking.Models
     [Scope("ModuleId")] // Ensures data is scoped to the module instance
     public class BookingEntity
     {
+        public int ModuleId { get; set; }
         public int ID { get; set; }
         public int CourseScheduleID { get; set; }
         public int UserID { get; set; }

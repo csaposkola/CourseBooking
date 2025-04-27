@@ -10,6 +10,7 @@ namespace CourseBooking.Models
     [Scope("ModuleId")]
     public class CourseScheduleEntity
     {
+        public int ModuleId { get; set; }
         public int ID { get; set; }
         public int CoursePlanID { get; set; }
         public DateTime StartTime { get; set; }
