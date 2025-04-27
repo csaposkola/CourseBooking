@@ -497,3 +497,98 @@
 .text-muted {
     color: #6c757d;
 }
+/* CourseBooking Module CSS */
+
+/* Modal Styling */
+#courseBookingModal {
+    font-family: Arial, sans-serif;
+    max-width: 95%;
+    padding: 0;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar {
+    background-color: #006dcc !important;
+    color: white !important;
+    border-bottom: 1px solid #0057a3 !important;
+    font-weight: bold;
+    border-radius: 0;
+}
+
+.courseBookingModalDialog .ui-dialog-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar-close {
+    outline: none;
+    background: transparent !important;
+    border: none !important;
+    color: white !important;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar-close .ui-icon {
+    color: white;
+    opacity: 0.8;
+}
+
+.courseBookingModalDialog .ui-dialog-titlebar-close:hover .ui-icon {
+    opacity: 1;
+}
+
+#courseBookingModal .text-center {
+    text-align: center;
+}
+
+#courseBookingModal .p-4 {
+    padding: 1.5rem;
+}
+
+#courseBookingModal .fa-spinner {
+    margin-bottom: 15px;
+}
+
+/* Force dialog close button visibility */
+.ui-dialog .ui-dialog-titlebar-close {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: transparent !important;
+    position: absolute !important;
+    right: 8px !important;
+    top: 8px !important;
+    z-index: 999 !important;
+    color: white !important;
+}
+
+.ui-dialog .ui-dialog-titlebar-close .ui-icon {
+    background-image: none !important;
+}
+
+/* Fix for modal z-index issues with DNN */
+.ui-widget-overlay {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    opacity: 0.5;
+    z-index: 1000; /* Higher than DNN default elements */
+}
+
+.ui-dialog {
+    z-index: 1001 !important; /* Ensure dialog appears above overlay */
+}
+
+/* Extra styling for voucher code */
+.voucher-code {
+    display: inline-block;
+    font-family: monospace;
+    font-size: 16px;
+    background-color: #f5f5f5;
+    padding: 5px 10px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+    margin-right: 10px;
+}
