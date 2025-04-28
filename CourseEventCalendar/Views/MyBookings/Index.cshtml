@@ -1,0 +1,117 @@
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<IEnumerable<CourseEventCalendar.CourseEventCalendar.Models.Booking>>
+
+@using DotNetNuke.Framework
+@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+@using DotNetNuke.Common
+
+@{
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseEventCalendar/Scripts/CourseBookings.js");
+    JavaScript.RequestRegistration(CommonJs.jQuery);
+    JavaScript.RequestRegistration(CommonJs.DnnPlugins);
+    ServicesFramework.Instance.RequestAjaxScriptSupport();
+
+    var hasBookings = Model != null && Model.Any();
+}
+
+<div class="cec-header">
+    <h2>My Bookings</h2>
+    <hr />
+</div>
+
+@if (Dnn.User.UserID <= 0)
+{
+    <div class="cec-alert cec-alert-info">
+        @* --- Correction 2: Call LoginUrl() as a method --- *@
+        <p>You need to <a href="@Globals.NavigateURL(Dnn.PortalSettings.LoginTabId, "", "returnurl=" + HttpContext.Current.Server.UrlEncode(HttpContext.Current.Request.RawUrl))">log in</a> to view your bookings.</p>
+    </div>
+}
+else if (!hasBookings)
+{
+    <div class="cec-alert cec-alert-info">
+        <p>You don't have any current bookings. <a href="@Url.Action("Index", "CourseEventGrid")">View available courses</a> to make a booking.</p>
+    </div>
+}
+else
+{
+    <table class="cec-bookings-grid">
+        <thead>
+            <tr>
+                <th>Course Name</th>
+                <th>Date & Time</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var booking in Model)
+            {
+                <tr data-booking-id="@booking.BookingID">
+                    <td>@(booking.Template.Name ?? "Unknown Course")</td> @* Safety check for null Template or Name *@
+                    <td>@booking.Event.StartAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@booking.Event.Duration hours</td>
+                    <td>@booking.Status</td>
+                    <td>
+                        @if (booking.Status == "Confirmed" && booking.Event.StartAt > DateTime.UtcNow)
+                        {
+                            <button type="button" class="dnnSecondaryAction cec-cancel-booking">
+                                Cancel Booking
+                            </button>
+                        }
+                        <a href="@Url.Action("Detail", "CourseEventGrid", new { ctl = "Detail", eventID = booking.EventID })" class="dnnSecondaryAction">
+                            View Details
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<script type="text/javascript">
+    
+    (function ($, Sys) {
+        $(function () {
+            const moduleId = '@Dnn.ModuleContext.';
+            const bookingManager = new CourseBookingManager(moduleId); // Pass moduleId if required
+
+            $('.cec-cancel-booking').on('click', function () {
+                const $row = $(this).closest('tr');
+                const bookingId = $row.data('booking-id');
+
+                if (!bookingId) {
+                    console.error("Could not find booking ID for cancellation.");
+                    return;
+                }
+                
+                if (typeof CourseEventDialog === 'undefined') {
+                    alert('An error occurred preparing the confirmation dialog.');
+                    console.error('CourseEventDialog is not defined.');
+                    return;
+                }
+
+                const dialog = new CourseEventDialog(
+                    'Confirm Cancellation',
+                    'Are you sure you want to cancel this booking?'
+                );
+
+                dialog
+                    .option('cancel', { caption: 'Keep Booking' })
+                    .option('confirm', { caption: 'Cancel Booking', type: 'Delete' }) // Assuming 'Delete' styles the button appropriately
+                    .show(function (choice) {
+                        if (choice === 'confirm') {
+                            bookingManager.cancelBooking(bookingId, function(success, message) { // Assume callback provides success and optional message
+                                if (success) {
+                                    window.location.reload();
+                                } else {
+                                    alert('Failed to cancel the booking: ' + (message || 'Please try again later.'));
+                                    console.error('Booking cancellation failed for ID:', bookingId, 'Message:', message);
+                                }
+                            });
+                        }
+                    });
+            });
+        });
+    }(jQuery, window.Sys || {}));
+</script>

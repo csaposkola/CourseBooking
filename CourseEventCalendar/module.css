@@ -1,0 +1,179 @@
+.dnnDeleteAction,
+.dnnPrimaryAction {
+    padding: 6px 6px;
+    line-height: 18px;
+    margin-bottom: 10px;
+}
+
+.dnnFormItem input,
+.dnnFormItem select {
+    height: 34px;
+}
+
+fieldset.dnnInlineForm {
+    display: flex;
+    flex-direction: row;
+}
+
+/* Booking Styles */
+.cec-course-info {
+    margin-bottom: 20px;
+}
+
+.cec-info-row {
+    margin-bottom: 5px;
+}
+
+.cec-info-label {
+    font-weight: bold;
+    display: inline-block;
+    width: 150px;
+}
+
+.cec-info-value {
+    display: inline-block;
+}
+
+.cec-status-cancelled {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.cec-booking-actions {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+}
+
+.cec-alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+    .cec-alert p {
+        margin: 0 0 10px 0;
+    }
+
+        .cec-alert p:last-child {
+            margin-bottom: 0;
+        }
+
+.cec-alert-info {
+    color: #31708f;
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+}
+
+.cec-alert-success {
+    color: #3c763d;
+    background-color: #dff0d8;
+    border-color: #d6e9c6;
+}
+
+.cec-alert-warning {
+    color: #8a6d3b;
+    background-color: #fcf8e3;
+    border-color: #faebcc;
+}
+
+.cec-alert-danger {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+}
+
+/* Bookings Grid */
+.cec-bookings-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+    .cec-bookings-grid th,
+    .cec-bookings-grid td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .cec-bookings-grid th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+    }
+
+    .cec-bookings-grid tr:hover {
+        background-color: #f1f1f1;
+    }
+/* Course Status Indicators */
+.cec-course-cancelled {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.cec-course-full {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+.cec-seats-available {
+    color: #27ae60;
+}
+
+/* Adjust calendar cell styling */
+table.cec-event-grid tr td .box span.cec-seats-available,
+table.cec-event-grid tr td .box span.cec-course-cancelled,
+table.cec-event-grid tr td .box span.cec-course-full {
+    display: block;
+    font-size: 0.85em;
+    margin-top: 3px;
+}
+
+/* Booking Actions */
+.cec-booking-actions {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+}
+
+.cec-alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+    .cec-alert p {
+        margin: 0 0 10px 0;
+    }
+
+        .cec-alert p:last-child {
+            margin-bottom: 0;
+        }
+
+.cec-alert-info {
+    color: #31708f;
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+}
+
+.cec-alert-success {
+    color: #3c763d;
+    background-color: #dff0d8;
+    border-color: #d6e9c6;
+}
+
+.cec-alert-warning {
+    color: #8a6d3b;
+    background-color: #fcf8e3;
+    border-color: #faebcc;
+}
+
+.cec-alert-danger {
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
+}

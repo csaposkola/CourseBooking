@@ -1,0 +1,106 @@
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<CourseEventCalendar.CourseEventCalendar.Models.CreateCourseParameters>
+@using DotNetNuke.Web.Client.ClientResourceManagement
+
+@using CourseEventCalendar.CourseEventCalendar.Models;
+
+@{
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseEventCalendar/Scripts/CourseEventGrid.js");
+
+    var templates = ViewBag.Templates as CourseTemplate[]
+        ?? new CourseEventCalendar.CourseEventCalendar.Models.CourseTemplate[0];
+    var templateOptions = new SelectList(templates, "TemplateID", "Name");
+    var participantTypeOptions = ViewBag.ParticipantTypes as SelectList;
+    var submitID = String.Format("submit-{0}", Guid.NewGuid());
+    var errorID = String.Format("error-{0}", Guid.NewGuid());
+    var formID = String.Format("form-{0}", Guid.NewGuid());
+    var participantsFormID = String.Format("participants-{0}", Guid.NewGuid());
+}
+
+<h1>Create a course event</h1>
+
+@using System.Collections.Generic
+@using DotNetNuke.Web.Mvc.Helpers
+
+<div id="Item-@Dnn.ModuleContext.ModuleId">
+    <div class="dnnForm dnnEditBasicSettings" id="@formID">
+        <p id="@errorID"></p>
+        <fieldset>
+            <div class="dnnFormItem">
+                <div><label for="startAt">Start at</label></div>
+                <p>@Model.StartAt</p>
+                @Html.HiddenFor(m => m.StartAt)
+            </div>
+            <div class="dnnFormItem">
+                <div><label for="templateID">Course template</label></div>
+                @Html.DropDownListFor(m => m.TemplateID, templateOptions)
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="dnnForm" id="@participantsFormID">
+        <h2>Participants</h2>
+        @for (var i = 0; i < 5; i++)
+        {
+            <fieldset class="dnnInlineForm" data-role="cec-participant-row">
+                <div class="dnnFormItem">
+                    <div><label for="planID">Role</label></div>
+                    @Html.DropDownList("ParticipantRole", participantTypeOptions)
+                    @Html.ValidationMessage("ParticipantRole", "This field is mandatory.")
+                </div>
+                <div class="dnnFormItem">
+                    <div><label for="startAt">Name</label></div>
+                    @Html.TextBox("ParticipantName")
+                    @Html.ValidationMessage("ParticipantName", "This field is mandatory.")
+                </div>
+                <div class="dnnFormItem">
+                    <div><label for="startAt">Certificate</label></div>
+                    @Html.TextBox("CertificateNumber")
+                    @Html.ValidationMessage("CertificateNumber", "This field is mandatory for instructors.")
+                </div>
+            </fieldset>
+        }
+    </div>
+
+    <button type="button" id="@submitID" class="dnnPrimaryAction">Schedule Course</button>
+    <a id="cancelEdit" href="#" class="dnnSecondaryAction">Cancel</a>
+</div>
+
+<script type="text/javascript">
+    (function ($, Sys) {
+        $(function () {
+            $('#cancelEdit').click(function () { dnnModal.closePopUp(false); });
+
+            var participantGrid = new CourseEventGridForm('#@participantsFormID');
+
+            $('#@submitID').click(function () {
+                if (!participantGrid.validate())
+                    return;
+
+                var templateID = $('#@formID')
+                    .find('[name="TemplateID"]')
+                    .val();
+                var data = {
+                    templateID,
+                    startAt: '@Model.StartAt.ToString("s")'
+                };
+
+                var proxy = new CourseEventProxy(
+                    '@Dnn.ActiveModule.ModuleID',
+                    'CourseEventCalendar'
+                );
+                participantGrid.submit(
+                    proxy,
+                    data,
+                    function (success, response) {
+                        if (success) {
+                            dnnModal.closePopUp(true);
+
+                        } else {
+                            $('#@errorID').html(response);
+
+                        }
+                    });
+            });
+        });
+    }(jQuery, window.Sys));
+</script>

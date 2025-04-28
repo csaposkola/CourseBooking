@@ -1,0 +1,61 @@
+﻿/************************************************************/
+/*****              SqlDataProvider Uninstall           *****/
+/*****                                                  *****/
+/***** Note: To manually execute this script you must   *****/
+/*****       perform a search and replace operation     *****/
+/*****       for {databaseOwner} and {objectQualifier}  *****/
+/*****                                                  *****/
+/************************************************************/
+
+-- Drop Foreign Key Constraint from Bookings to Events (Optional but good practice before table drop)
+IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}FK_CourseEventCalendar_Bookings_CourseEvents') AND parent_object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_Bookings'))
+BEGIN
+    ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_Bookings DROP CONSTRAINT [FK_CourseEventCalendar_Bookings_CourseEvents]
+END
+GO
+
+-- Drop Foreign Key Constraint from Participants to Events (Optional but good practice before table drop)
+IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}FK_CourseEventCalendar_CourseParticipants_CourseEvents') AND parent_object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants'))
+BEGIN
+    ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants DROP CONSTRAINT [FK_CourseEventCalendar_CourseParticipants_CourseEvents]
+END
+GO
+
+-- Drop Foreign Key Constraint from Events to Templates (Optional but good practice before table drop)
+IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}FK_CourseEventCalendar_CourseEvents_CourseTemplates') AND parent_object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents'))
+BEGIN
+    ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents DROP CONSTRAINT [FK_CourseEventCalendar_CourseEvents_CourseTemplates]
+END
+GO
+
+-- Drop the Bookings table
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_Bookings') AND type in (N'U'))
+BEGIN
+    DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_Bookings
+END
+GO
+
+-- Drop the Participants table
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants') AND type in (N'U'))
+BEGIN
+    DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants
+END
+GO
+
+-- Drop the Events table
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents') AND type in (N'U'))
+BEGIN
+    DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents
+END
+GO
+
+-- Drop the Templates table
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates') AND type in (N'U'))
+BEGIN
+    DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates
+END
+GO
+
+/************************************************************/
+/*****          SqlDataProvider Uninstall End           *****/
+/************************************************************/

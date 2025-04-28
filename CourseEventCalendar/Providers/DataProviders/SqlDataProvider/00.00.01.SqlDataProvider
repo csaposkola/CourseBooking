@@ -1,0 +1,194 @@
+﻿/************************************************************/
+/*****              SqlDataProvider                     *****/
+/*****                                                  *****/
+/***** Note: To manually execute this script you must   *****/
+/*****       perform a search and replace operation     *****/
+/*****       for {databaseOwner} and {objectQualifier}  *****/
+/*****                                                  *****/
+/************************************************************/
+
+-- Drop existing tables in reverse order of dependency
+IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}FK_CourseEventCalendar_Bookings_CourseEvents') AND parent_object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_Bookings'))
+ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_Bookings DROP CONSTRAINT [FK_CourseEventCalendar_Bookings_CourseEvents]
+GO
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_Bookings') AND type in (N'U'))
+DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_Bookings
+GO
+
+IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}FK_CourseEventCalendar_CourseParticipants_CourseEvents') AND parent_object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants'))
+ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants DROP CONSTRAINT [FK_CourseEventCalendar_CourseParticipants_CourseEvents]
+GO
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants') AND type in (N'U'))
+DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants
+GO
+
+IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}FK_CourseEventCalendar_CourseEvents_CourseTemplates') AND parent_object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents'))
+ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents DROP CONSTRAINT [FK_CourseEventCalendar_CourseEvents_CourseTemplates]
+GO
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents') AND type in (N'U'))
+DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents
+GO
+
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates') AND type in (N'U'))
+DROP TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates
+GO
+
+-- Create CourseTemplates table with capacity
+CREATE TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates (
+    [TemplateID] INT NOT NULL IDENTITY(1, 1) CONSTRAINT [PK_CourseEventCalendar_CourseTemplates] PRIMARY KEY CLUSTERED,
+    [Name] NVARCHAR(1024),
+    [Duration] INT NOT NULL CONSTRAINT [DF_CourseEventCalendar_CourseTemplates_Duration] DEFAULT 1,
+    [Description] NVARCHAR(MAX),
+    [IsPublic] BIT NOT NULL CONSTRAINT [DF_CourseEventCalendar_CourseTemplates_IsPublic] DEFAULT 0,
+    [MaxParticipants] INT NOT NULL CONSTRAINT [DF_CourseEventCalendar_CourseTemplates_MaxParticipants] DEFAULT 10 -- Added capacity with default
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];
+GO
+
+-- Create CourseEvents table with capacity and current count
+CREATE TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents (
+    [EventID] INT NOT NULL IDENTITY(1, 1) CONSTRAINT [PK_CourseEventCalendar_CourseEvents] PRIMARY KEY CLUSTERED,
+    [CreatedByUserID] INT NULL,
+    [CreatedOnDate] DATETIME NULL CONSTRAINT [DF_CourseEventCalendar_CourseEvents_CreatedOnDate] DEFAULT GETUTCDATE(),
+    [IsCancelled] BIT NOT NULL CONSTRAINT [DF_CourseEventCalendar_CourseEvents_IsCancelled] DEFAULT 0,
+    [StartAt] DATETIME NULL,
+    [Duration] INT NULL, -- Allow null if it can be derived from Template
+    [TemplateID] INT NOT NULL, -- Should reference a template
+    [MaxParticipants] INT NOT NULL CONSTRAINT [DF_CourseEventCalendar_CourseEvents_MaxParticipants] DEFAULT 10, -- Added capacity with default
+    [CurrentParticipants] INT NOT NULL CONSTRAINT [DF_CourseEventCalendar_CourseEvents_CurrentParticipants] DEFAULT 0 -- Added booking count with default
+) ON [PRIMARY];
+GO
+
+-- Add foreign key constraint from Events to Templates
+ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents WITH NOCHECK ADD CONSTRAINT [FK_CourseEventCalendar_CourseEvents_CourseTemplates] FOREIGN KEY ([TemplateID])
+    REFERENCES {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates ([TemplateID])
+    ON DELETE CASCADE; -- If a template is deleted, delete associated events
+GO
+
+-- Create new Bookings table
+CREATE TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_Bookings (
+    [BookingID] INT NOT NULL IDENTITY(1, 1) CONSTRAINT [PK_CourseEventCalendar_Bookings] PRIMARY KEY CLUSTERED,
+    [EventID] INT NOT NULL,
+    [UserID] INT NOT NULL, -- Refers to DNN Users table UserID
+    [BookingDate] DATETIME NOT NULL CONSTRAINT [DF_CourseEventCalendar_Bookings_BookingDate] DEFAULT GETUTCDATE(),
+    [Status] NVARCHAR(20) NOT NULL CONSTRAINT [DF_CourseEventCalendar_Bookings_Status] DEFAULT 'Confirmed', -- e.g., Confirmed, Cancelled, Waitlisted
+    [Notes] NVARCHAR(MAX) NULL
+) ON [PRIMARY];
+GO
+
+-- Add foreign key constraint from Bookings to Events
+ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_Bookings WITH NOCHECK ADD CONSTRAINT [FK_CourseEventCalendar_Bookings_CourseEvents] FOREIGN KEY ([EventID])
+    REFERENCES {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents ([EventID])
+    ON DELETE CASCADE; -- If an event is deleted, delete associated bookings
+GO
+
+-- Create CourseParticipants table (Likely for Instructors/Staff, distinct from Bookings)
+CREATE TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants (
+    [ParticipantID] INT NOT NULL IDENTITY(1, 1) CONSTRAINT [PK_CourseEventCalendar_CourseParticipants] PRIMARY KEY CLUSTERED,
+    [EventID] INT NOT NULL,
+    [CreatedByUserID] INT NULL, -- User who added this participant record
+    [CreatedOnDate] DATETIME NULL CONSTRAINT [DF_CourseEventCalendar_CourseParticipants_CreatedOnDate] DEFAULT GETUTCDATE(),
+    [ParticipantName] NVARCHAR(2048) NULL, -- Can be null if linking via UserID
+    [UserID] INT NULL, -- Could optionally link to a DNN UserID for staff/instructors
+    [Role] NVARCHAR(32) NULL, -- e.g., 'instructor', 'assistant'
+    [CertificateNumber] NVARCHAR(32) NULL
+) ON [PRIMARY];
+GO
+
+-- Add foreign key constraint from Participants to Events
+ALTER TABLE {databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants WITH NOCHECK ADD CONSTRAINT [FK_CourseEventCalendar_CourseParticipants_CourseEvents] FOREIGN KEY ([EventID])
+    REFERENCES {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents ([EventID])
+    ON DELETE CASCADE; -- If an event is deleted, remove associated participants/instructors
+GO
+
+-- Insert brewing course templates with categories and capacities
+-- Note: This replaces any previous template data due to the DROP/CREATE sequence above
+INSERT INTO {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates (
+    [Name], [Duration], [IsPublic], [Description], [MaxParticipants]
+) VALUES
+    ('Basic Beer Brewing', 2, 1, 'Bevezetés a sörfőzés alapjaiba, eszközök, alapanyagok és alaptechnikák bemutatásával.', 15),
+    ('Advanced Brewing Techniques', 3, 1, 'Gyakorlott házi sörfőzőknek szóló képzés, vízkémia és élesztőkezelés mélyebb ismeretével.', 8),
+    ('Cocktail Mastery Course', 2, 1, 'Átfogó bevezetés a koktélkészítés művészetébe, klasszikus és modern receptekkel.', 12),
+    ('Gin & Tonic Special', 1, 1, 'Egyedi workshop a tökéletes gin-tonik párosításokról és variációkról.', 20),
+    ('Homemade Liqueur Preparation', 4, 1, 'Részletes útmutató a házi likőrök előállításáról különféle alapanyagokból.', 10),
+    ('Wine Tasting Basics', 2, 1, 'Bevezetés a borkóstolás technikáiba és a különböző borfajták jellemzőibe.', 16);
+GO
+
+-- Create some sample course events for the next few weeks based on the templates above
+DECLARE @CurrentDate DATETIME = GETUTCDATE();
+DECLARE @CreatorUserID INT = 1; -- Assuming UserID 1 is an admin/host user
+DECLARE @EventCounter INT = 0;
+DECLARE @NumberOfEventsToCreate INT = 10;
+DECLARE @MinTemplateID INT;
+DECLARE @MaxTemplateID INT;
+DECLARE @TemplateCount INT;
+
+SELECT @MinTemplateID = MIN(TemplateID), @MaxTemplateID = MAX(TemplateID)
+FROM {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates;
+
+SET @TemplateCount = (@MaxTemplateID - @MinTemplateID) + 1;
+
+WHILE @EventCounter < @NumberOfEventsToCreate
+BEGIN
+    DECLARE @TemplateID INT = (@EventCounter % @TemplateCount) + @MinTemplateID; -- Cycle through available templates
+    DECLARE @EventDuration INT;
+    DECLARE @EventMaxParticipants INT;
+
+    -- Get details from the selected template
+    SELECT @EventDuration = Duration, @EventMaxParticipants = MaxParticipants
+    FROM {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates
+    WHERE TemplateID = @TemplateID;
+
+    -- Insert the course event
+    INSERT INTO {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents (
+        [CreatedByUserID], [CreatedOnDate], [IsCancelled], [StartAt], [Duration], [TemplateID], [MaxParticipants], [CurrentParticipants]
+    ) VALUES (
+        @CreatorUserID,
+        @CurrentDate,
+        0, -- Not cancelled
+        DATEADD(DAY, (@EventCounter * 3 + 5), @CurrentDate), -- Schedule events progressively in the future
+        @EventDuration,
+        @TemplateID,
+        @EventMaxParticipants,
+        FLOOR(RAND() * (@EventMaxParticipants / 2.0)) -- Add some random initial bookings (up to half capacity)
+    );
+
+    SET @EventCounter = @EventCounter + 1;
+END;
+GO
+
+-- Add sample instructors (or other roles) into the CourseParticipants table for the created events
+INSERT INTO {databaseOwner}{objectQualifier}CourseEventCalendar_CourseParticipants (
+    [EventID], [CreatedByUserID], [CreatedOnDate], [ParticipantName], [Role], [CertificateNumber], [UserID]
+)
+SELECT
+    ce.EventID,
+    ce.CreatedByUserID, -- Copied from event creator for simplicity
+    ce.CreatedOnDate, -- Copied from event creation date for simplicity
+    CASE ct.[Name] -- Determine instructor based on template name
+        WHEN 'Basic Beer Brewing' THEN 'Sörös Béla'
+        WHEN 'Advanced Brewing Techniques' THEN 'Sörös Béla'
+        WHEN 'Cocktail Mastery Course' THEN 'Koktél Katalin'
+        WHEN 'Gin & Tonic Special' THEN 'Koktél Katalin'
+        WHEN 'Homemade Liqueur Preparation' THEN 'Likőrös Lajos' -- Made up name
+        WHEN 'Wine Tasting Basics' THEN 'Boros Balázs'
+        ELSE 'General Instructor' -- Fallback
+    END AS ParticipantName,
+    'Instructor' AS Role, -- Assign the role
+    CASE ct.[Name] -- Assign a certificate number based on template name
+        WHEN 'Basic Beer Brewing' THEN 'BRW-12345-678-9101-B'
+        WHEN 'Advanced Brewing Techniques' THEN 'BRW-12345-678-9101-A'
+        WHEN 'Cocktail Mastery Course' THEN 'MIX-54321-987-6543-M'
+        WHEN 'Gin & Tonic Special' THEN 'MIX-54321-987-6543-G'
+        WHEN 'Homemade Liqueur Preparation' THEN 'LIQ-98765-432-1098-L'
+        WHEN 'Wine Tasting Basics' THEN 'WIN-98765-432-1098-W'
+        ELSE NULL -- Fallback
+    END AS CertificateNumber,
+    NULL -- UserID is null here, could be populated if instructors are DNN users
+FROM {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents ce
+INNER JOIN {databaseOwner}{objectQualifier}CourseEventCalendar_CourseTemplates ct ON ce.TemplateID = ct.TemplateID
+WHERE ce.EventID IN (SELECT TOP 10 EventID FROM {databaseOwner}{objectQualifier}CourseEventCalendar_CourseEvents ORDER BY CreatedOnDate DESC); -- Add instructors only for the recently created events
+GO
+
+/************************************************************/
+/*****              SqlDataProvider End                 *****/
+/************************************************************/

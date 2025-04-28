@@ -1,0 +1,141 @@
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage
+
+@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+@using CourseEventCalendar.CourseEventCalendar.Services
+@using CourseEventCalendar.CourseEventCalendar.Models;
+@using CourseEventCalendar.CourseEventCalendar.Util;
+
+@{
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseEventCalendar/Scripts/CourseEventGrid.js");
+
+    var utcNow = DateTime.UtcNow;
+    var weekOfYear = (WeekOfYear)ViewBag.WeekOfYear;
+    var startDay = weekOfYear.FirstDay;
+    var localNow = DateTime.Now;
+
+    var events = ViewBag.Events as CourseData[]
+        ?? new CourseData[] { };
+    var prevline = new CourseData[7];
+    var thisWeek = new WeekOfYear(utcNow);
+    var nextWeek = weekOfYear.AddWeeks(1);
+    var prevWeek = weekOfYear.AddWeeks(-1);
+    var isLoggedIn = Dnn.User.UserID > 0;
+}
+
+<div class="cec-header">
+    <h2>Brewing Course Calendar</h2>
+    <hr />
+</div>
+
+<p>
+    Please remember, all dates in the calendar are in UTC time as our course operations
+    uses UTC time. Your local time is approximately @DateTime.Now.ToString("HH:mm").
+</p>
+
+@if (isLoggedIn)
+{
+    <a href="@Url.Action("Index", "MyBookings")" class="dnnPrimaryAction" style="margin-bottom: 15px;">View My Bookings</a>
+}
+
+<div class="cec-header">
+    <h2>@(weekOfYear.FirstDay.ToShortDateString()) - @(weekOfYear.LastDay.ToShortDateString())</h2>
+    <hr />
+</div>
+
+<table class="cec-event-grid">
+    <thead>
+        <tr>
+            <th></th>
+            @for (var i = 0; i < 7; i++)
+            {
+                var day = startDay.AddDays(i);
+                <th>
+                    @day.ToString("dddd")<br />
+                    (@day.ToShortDateString())
+                </th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @for (var i = 0; i < 8; i++)
+        {
+            var offset = TimeSpan.FromHours(i * 3);
+            var time = utcNow.Date + offset;
+
+            <tr>
+                <th>
+                    LOCAL: @time.ToLocalTime().ToString("HH:mm")<br />
+                    (UTC: @time.ToString("HH:mm"))
+                </th>
+                @for (var d = 0; d < 7; d++)
+                {
+                    var cellDay = startDay.AddDays(d);
+                    var cellTime = cellDay.AddHours(i * 3);
+                    var isPast = cellTime < utcNow;
+                    var isLocked = cellTime < utcNow.AddHours(12);
+                    var courseEvent = events.FirstOrDefault(e => e.IsScheduledAt(cellTime, 3));
+                    var isScheduled = courseEvent != null;
+                    var isFree = !isPast && !isLocked && !isScheduled;
+                    var displayUserName = courseEvent != null
+                        && courseEvent.User != null
+                        && Dnn.User.IsAdmin;
+                    var cellCssClass = isPast || isLocked
+                        ? "not-available"
+                        : (isScheduled ? "scheduled" : "free");
+                    var isRepeated = courseEvent != null && prevline[d] == courseEvent;
+                    prevline[d] = courseEvent;
+                    var rowspan = courseEvent == null ? 1 : (int)Math.Ceiling(courseEvent.Duration / 3d);
+
+                    if (!isRepeated)
+                    {
+                        <td class="@cellCssClass" rowspan="@rowspan">
+                            @if (courseEvent != null)
+                            {
+                                <a href="@Url.Action("Detail", "CourseEventGrid", new {ctl = "Detail", eventID = courseEvent.EventID })">
+                                    <div class="box">
+                                        <span>
+                                            <strong>@(courseEvent.Template.Name)</strong><br />
+                                            @if (courseEvent.Event.HasAvailableSeats && !courseEvent.Event.IsCancelled)
+                                            {
+                                                <span class="cec-seats-available">
+                                                    @courseEvent.Event.AvailableSeats seats available
+                                                </span>
+                                            }
+                                            else if (courseEvent.Event.IsCancelled)
+                                            {
+                                                <span class="cec-course-cancelled">CANCELLED</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="cec-course-full">FULLY BOOKED</span>
+                                            }
+                                            @if (displayUserName)
+                                            {
+                                                <br />@(courseEvent.User.DisplayName)
+                                            }
+                                        </span>
+                                    </div>
+                                </a>
+                            }
+                            else if (isFree)
+                            {
+                                <a href="@Url.Action("Create", "CourseEventGrid", new {ctl = "Create", startAt = cellTime })">
+                                    <div class="box">
+                                        <span class="autohide">Create event</span>
+                                    </div>
+                                </a>
+                            }
+                        </td>
+                    }
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="cec-nav-control">
+    <a href="@Url.Action("Index")?year=@(nextWeek.Year)&week=@(nextWeek.Week)" class="dnnSecondaryAction cec-right">Next week</a>
+    <a href="@Url.Action("Index")?year=@(thisWeek.Year)&week=@(thisWeek.Week)" class="dnnSecondaryAction cec-center">This week</a>
+    <a href="@Url.Action("Index")?year=@(prevWeek.Year)&week=@(prevWeek.Week)" class="dnnSecondaryAction cec-left">Previous week</a>
+</div>

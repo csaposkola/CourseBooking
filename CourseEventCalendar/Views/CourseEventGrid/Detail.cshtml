@@ -1,0 +1,105 @@
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage<CourseData>
+
+@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+
+@using CourseEventCalendar.CourseEventCalendar.Services;
+
+@{
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/CourseEventCalendar/Scripts/CourseEventGrid.js");
+
+    ViewBag.Title = "Course Event Detail";
+
+    var cancelEventID = String.Format("cancel-{0}", Guid.NewGuid());
+    var errorID = String.Format("error-{0}", Guid.NewGuid());
+}
+
+@if (Model == null)
+{
+    <p>This is an invalid event.</p>
+}
+else
+{
+    <h2>Course schedule</h2>
+    <hr />
+    <h3>Starts at @Model.Event.StartAt.ToString("yyyy-MM-dd HH:mm:ss") (UTC)</h3>
+    <h3>Duration: @Model.Event.Duration hour(s)</h3>
+
+    <h3>Course template</h3>
+    <hr />
+    <p class="cec-template-name">@Model.Template.Name</p>
+    <p class="cec-template-description">@Model.Template.Description</p>
+
+    <h3>Participants</h3>
+    <hr />
+    <table class="cec-participants">
+        <thead>
+            <tr>
+                <th>Participant</th>
+                <th>Role</th>
+                <th>Certificate</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var participant in Model.Participants)
+            {
+                <tr>
+                    <td>@participant.ParticipantName</td>
+                    <td>@participant.Role</td>
+                    <td>@participant.CertificateNumber</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <p id="@errorID"></p>
+    <button type="button" id="@cancelEventID" class="dnnDeleteAction">Cancel Course Event</button>
+}
+<a id="cancelEdit" href="#" class="dnnSecondaryAction">Close</a>
+
+<script type="text/javascript">
+    (function ($, Sys) {
+        $(function () {
+            $('#cancelEdit').click(function () { dnnModal.closePopUp(false); });
+
+            $('#@cancelEventID').click(function () {
+
+                var dialog = new CourseEventDialog(
+                    'Confirm',
+                    'Do you really want to cancel this course event?'
+                );
+                dialog
+                    .option('cancel', { caption: 'Cancel' })
+                    .option('confirm', { caption: 'Confirm', type: 'Delete' })
+                    .show(function (choice) {
+                        switch (choice) {
+                            case 'cancel':
+                                dnnModal.closePopUp(true);
+                                break;
+
+                            case 'confirm':
+                                var proxy = new CourseEventProxy(
+                                    '@Dnn.ActiveModule.ModuleID',
+                                    'CourseEventCalendar'
+                                );
+                                proxy.cancel(
+                                    @Model.Event.EventID,
+                                    function (success, response) {
+                                        if (success) {
+                                            dnnModal.closePopUp(true);
+
+                                        } else {
+                                            $('#@errorID').html(response);
+
+                                        }
+                                    });
+                                break;
+                        }
+                    })
+            });
+        });
+
+
+
+    }(jQuery, window.Sys));
+</script>
