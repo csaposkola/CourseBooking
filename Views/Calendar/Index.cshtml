@@ -1,7 +1,31 @@
-﻿namespace Csaposkola.Modules.Kurzusnaptar.Views.Calendar
-{
-    public class Index_cshtml
-    {
-        
-    }
+﻿<!-- Views/Calendar/Index.cshtml -->
+@inherits DotNetNuke.Web.Mvc.Framework.DnnWebViewPage
+
+@using DotNetNuke.Web.Client.ClientResourceManagement
+@using DotNetNuke.Framework.JavaScriptLibraries
+
+@{
+    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css");
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js");
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/Kurzusnaptar/Scripts/Calendar.js");
 }
+
+<div id="calendar-container-@Dnn.ActiveModule.ModuleID">
+    <div class="calendar-toolbar">
+        <button id="btnMonthView-@Dnn.ActiveModule.ModuleID" class="btn btn-primary active">@Dnn.LocalizeString("MonthView")</button>
+        <button id="btnWeekView-@Dnn.ActiveModule.ModuleID" class="btn btn-default">@Dnn.LocalizeString("WeekView")</button>
+    </div>
+    <div id="calendar-@Dnn.ActiveModule.ModuleID" class="course-calendar"></div>
+</div>
+
+<script type="text/javascript">
+    jQuery(document).ready(function () {
+        var moduleId = '@Dnn.ActiveModule.ModuleID';
+        var sf = $.ServicesFramework(moduleId);
+        
+        var apiUrl = sf.getServiceRoot('Kurzusnaptar') + 'CourseApi/GetCourses';
+        
+        // Initialize calendar after the DOM is ready
+        initializeCalendar(moduleId, apiUrl);
+    });
+</script>

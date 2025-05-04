@@ -1,0 +1,35 @@
+/* module.css */
+.course-calendar {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-toolbar {
+    margin-bottom: 15px;
+    text-align: right;
+}
+
+.fc-event {
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 2px 4px;
+    border: none;
+    background-color: #3788d8;
+    color: white;
+}
+
+.fc-daygrid-event {
+    white-space: normal !important;
+    align-items: normal !important;
+}
+
+.fc-event-title {
+    font-weight: 500;
+}
+
+.popover {
+    max-width: 300px;
+}
