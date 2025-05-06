@@ -25,5 +25,27 @@ namespace Csaposkola.Modules.Kurzusnaptar.Controllers
                 return Request.CreateErrorResponse(HttpStatusCode.InternalServerError, ex.Message);
             }
         }
+        
+        [HttpPost]
+        [DnnAuthorize]
+        public HttpResponseMessage AddToCart(string productId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(productId))
+                {
+                    return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Product ID is required");
+                }
+
+                // Construct the add to cart URL - this is a standard Hotcakes URL
+                string addToCartUrl = $"/AddToCart.aspx?ProductId={productId}&Quantity=1";
+                
+                return Request.CreateResponse(HttpStatusCode.OK, new { success = true, cartUrl = addToCartUrl });
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.InternalServerError, ex.Message);
+            }
+        }
     }
 }
