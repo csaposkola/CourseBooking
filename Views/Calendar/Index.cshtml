@@ -5,27 +5,51 @@
 @using DotNetNuke.Framework.JavaScriptLibraries
 
 @{
-    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css");
-    ClientResourceManager.RegisterScript(Dnn.DnnPage, "https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js");
-    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/Kurzusnaptar/Scripts/Calendar.js");
+    // Register jQuery and DNN plugins first
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.jQuery);
+    DotNetNuke.Framework.JavaScriptLibraries.JavaScript.RequestRegistration(CommonJs.DnnPlugins);
+    DotNetNuke.Framework.ServicesFramework.Instance.RequestAjaxScriptSupport();
+
+    // Register external libraries
+    ClientResourceManager.RegisterStyleSheet(Dnn.DnnPage, "https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css", 10);
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js", 15);
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales/hu.js", 20);
+
+    // Register our custom script last
+    ClientResourceManager.RegisterScript(Dnn.DnnPage, "~/DesktopModules/MVC/Kurzusnaptar/Scripts/Calendar.js", 30);
 }
 
 <div id="calendar-container-@Dnn.ActiveModule.ModuleID">
     <div class="calendar-toolbar">
-        <button id="btnMonthView-@Dnn.ActiveModule.ModuleID" class="btn btn-primary active">@Dnn.LocalizeString("MonthView")</button>
-        <button id="btnWeekView-@Dnn.ActiveModule.ModuleID" class="btn btn-default">@Dnn.LocalizeString("WeekView")</button>
+        <button id="btnMonthView-@Dnn.ActiveModule.ModuleID" type="button" class="btn btn-primary active">@Dnn.LocalizeString("MonthView")</button>
+        <button id="btnWeekView-@Dnn.ActiveModule.ModuleID" type="button" class="btn btn-default">@Dnn.LocalizeString("WeekView")</button>
     </div>
     <div id="calendar-@Dnn.ActiveModule.ModuleID" class="course-calendar"></div>
+    <div id="debug-info" style="margin-top: 20px; font-size: 12px; color: #666;"></div>
 </div>
 
 <script type="text/javascript">
     jQuery(document).ready(function () {
+        console.log("Document ready");
         var moduleId = '@Dnn.ActiveModule.ModuleID';
         var sf = $.ServicesFramework(moduleId);
-        
+
         var apiUrl = sf.getServiceRoot('Kurzusnaptar') + 'CourseApi/GetCourses';
-        
-        // Initialize calendar after the DOM is ready
-        initializeCalendar(moduleId, apiUrl);
+        console.log("API URL:", apiUrl);
+
+        // Make sure FullCalendar is loaded
+        if (typeof FullCalendar === 'undefined') {
+            console.error("FullCalendar is not loaded!");
+            return;
+        }
+
+        // Initialize calendar with a delay to ensure all scripts are loaded
+        setTimeout(function() {
+            try {
+                initializeCalendar(moduleId, apiUrl);
+            } catch (error) {
+                console.error("Error in calendar initialization:", error);
+            }
+        }, 1000);
     });
 </script>
